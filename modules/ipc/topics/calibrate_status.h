@@ -1,0 +1,61 @@
+#pragma once
+
+
+#include <ipc.h>
+
+#ifndef __cplusplus
+
+#endif
+
+#define ACCL_CALIBRATING                0u
+#define GYRO_CALIBRATING                1u
+#define MAG_CALIBRATING                 2u
+#define INERTIA_CALIBRATING             3u
+#define ESC_CALIBRATING                 4u
+#define RC_CALIBRATING                  5u
+
+enum ACCEL_CALIBRATE_STATUS {
+	ACCEL_CALIBRATE_SUCCESS = 1,
+	ACCEL_CALIBRATE_FAILED,
+	ACCEL_CALIBRATE_COLLECT_LEVEL,
+	ACCEL_CALIBRATE_COLLECT_LEFT,
+	ACCEL_CALIBRATE_COLLECT_RIGHT,
+	ACCEL_CALIBRATE_COLLECT_UP,
+	ACCEL_CALIBRATE_COLLECT_DOWN,
+	ACCEL_CALIBRATE_COLLECT_BACK,
+	ACCEL_CALIBRATE_DETECT_POS,
+	ACCEL_CALIBRATE_DETECT_MOTION,
+	ACCEL_CALIBRATE_ROTATION
+};
+
+enum GYRO_CALIBRATE_STATUS {
+	GYRO_CALIBRATE_SUCCESS = 1,
+	GYRO_CALIBRATE_FAILED
+};
+
+enum MAG_CALIBRATE_STATUS {
+	MAG_CALIBRATE_SUCCESS = 1,
+	MAG_CALIBRATE_FAILED,
+	MAG_CALIBRATE_ONE,
+	MAG_CALIBRATE_TWO,
+	MAG_CALIBRATE_THREE,
+	MAG_CALIBRATE_ROTATION
+};
+
+enum INERTIA_CALIBRATE_STATUS {
+	INERTIA_CALIBRATE_SUCCESS = 1,
+	INERTIA_CALIBRATE_FAILED
+};
+
+struct calibrate_status_s {
+	uint64_t timestamp;
+	uint8_t calibrate_type;
+	uint8_t calibrate_statu;
+	float param1;
+	float param2;
+	float param3;
+};
+
+/* register this as object request broker structure */
+IPC_DECLARE(calibrate_status);
+

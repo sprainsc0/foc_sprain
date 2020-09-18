@@ -1,0 +1,90 @@
+#ifndef MC_FOC_H
+#define MC_FOC_H
+
+#include <datatypes.h>
+#include <stdint.h>
+#include "cmsis_os.h"
+#include <string.h>
+#include "uPerf.h"
+#include <pid/pid.h>
+#include <ipc.h>
+#include "param.h"
+
+#include "topics/parameter_update.h"
+#include "topics/encoder.h"
+#include "topics/foc_status.h"
+
+#define ADC_CURRENT_OHM		                  0.1f
+#define ADC_CURRENT_AMP		                  20.0f
+#define VREFINT                               1.2f
+#define VREF                                  3.3f
+            
+#define RESISTANCE1                           30.0f  // 30K
+#define RESISTANCE2                           3.3f   // 3.3K
+
+#define CURRENT_RATE_DT                       0.0001f
+
+class FOC
+{
+public:
+    FOC(void);
+    ~FOC(void);
+
+    void *_param;
+    void run(void *parameter);
+
+    bool init(void);
+    void foc_process(void);
+
+    void parameter_update(bool force);
+
+    void current_calibration(void);
+
+protected:
+    osThreadId_t _handle;
+
+private:
+    static uint8_t _count;
+    
+    struct motor_config {
+        uint8_t ctrl_loop;
+        bool    foc_sample_v0_v7;
+        float   offset[3];
+        float   duty_max;
+    } _mc_cfg;
+
+    struct {
+        param_t ctrl_loop_handle;
+        param_t foc_sample_v0_v7_handle;
+        param_t duty_max_handle;
+    } _param_handles;
+
+    // 参考电压
+    uint16_t _refint;
+
+    int _params_sub;
+
+    int _encoder_sub;
+    struct encoder_s _encoder_data;
+
+    orb_advert_t _foc_status_pub;
+    struct foc_status_s _foc_status;
+
+    float target_id;
+    float target_iq;
+    float target_phase;
+
+    PID _id_ctrl;
+    PID _iq_ctrl;
+
+    void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
+		uint32_t* tAout, uint32_t* tBout, uint32_t* tCout, uint32_t *svm_sector);
+    
+    perf_counter_t foc_adc_int;
+    perf_counter_t foc_adc_ela;
+
+    perf_counter_t foc_task_int;
+    perf_counter_t foc_task_ela;
+};
+
+#endif
