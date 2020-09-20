@@ -1,5 +1,6 @@
 #include "platform.h"
 #include "serial.h"
+#include "uavcan.h"
 
 void platform_init(void)
 {

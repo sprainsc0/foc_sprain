@@ -6,7 +6,7 @@
 #include "hrt_timer.h"
 #include "debug.h"
 
-static IPCType        *ipc_data[_ipc_topics_count];
+static IPCType        *ipc_data[TOPICS_COUNT];
 
 /*
  * 32           24             12        4           0
@@ -302,7 +302,7 @@ int ipc_check(int handle, bool *updated)
 
 void ipc_init(void)
 {
-    for(int i = 0; i < _ipc_topics_count; ++i) {
+    for(int i = 0; i < TOPICS_COUNT; ++i) {
         if(is_orb_multi(i)) {
             ipc_data[i] = (IPCType*)pvPortMalloc(IPC_MULTI_MAX_INSTANCES * sizeof(IPCType));
             

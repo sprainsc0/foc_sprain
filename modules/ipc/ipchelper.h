@@ -15,7 +15,7 @@ struct IPCType{
 //  OS_FLAG_GRP	                        *sem;
 };
 
-extern IPCType          *ipc_data[_ipc_topics_count];
+extern IPCType          *ipc_data[TOPICS_COUNT];
 
 extern int              get_orb_instance_according_to_priority(const int priority);
 extern int              get_priority(const int instance);

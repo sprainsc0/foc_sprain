@@ -1,5 +1,5 @@
-#ifndef _IPC_H
-#define _IPC_H
+#ifndef _IPCCORE_H
+#define _IPCCORE_H
 
 /**
  * @file ipc.h
@@ -102,8 +102,6 @@ extern "C"{
  * publisher.
  */
 typedef void 	*orb_advert_t;
-
-const uint16_t _ipc_topics_count = TOPICS_COUNT;
 
 void ipc_init();
 

@@ -1561,6 +1561,12 @@
     <group>
         <name>Src</name>
         <group>
+            <name>canlink</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\uavcan\canlink.cpp</name>
+            </file>
+        </group>
+        <group>
             <name>command</name>
             <file>
                 <name>$PROJ_DIR$\..\..\src\command\command.cpp</name>

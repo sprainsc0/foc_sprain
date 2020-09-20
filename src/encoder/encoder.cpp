@@ -8,7 +8,7 @@
 
 const osThreadAttr_t enc_attributes = {
 		.name = "enc",
-		.priority = (osPriority_t)osPriorityRealtime,
+		.priority = (osPriority_t)osPriorityHigh,
 		.stack_size = 512};
 
 namespace MC_ENC {

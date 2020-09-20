@@ -13,7 +13,7 @@ static uint16_t adc_msic[3];
 
 const osThreadAttr_t foc_attributes = {
 		.name = "foc",
-		.priority = (osPriority_t)osPriorityRealtime1,
+		.priority = (osPriority_t)osPriorityRealtime2,
 		.stack_size = 512};
 
 namespace MC_FOC {

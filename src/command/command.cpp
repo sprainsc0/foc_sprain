@@ -63,13 +63,13 @@ void Command::run(void *parameter)
             ipc_pull(IPC_ID(foc_command), _commander_sub, &_command);
             switch(_command.command) {
             case CMD_PRE_CALIBRATION:
-                if (((int)(_command.param1)) == 1) {
+                if (_command.sub_cmd == 1) {
                     enter_cali_mode();
                     enc_e = new Enc_CalE(_cal_status_pub);
-                    enc_e->do_calibration(_command.param2, (uint8_t)_command.param3);
+                    enc_e->do_calibration(_command.param1, (uint8_t)_command.param2);
                     delete enc_e;
                     exit_cali_mode();
-                }  else if (((int)(_command.param1)) == 2) {
+                }  else if (_command.sub_cmd == 2) {
                     enter_cali_mode();
                     enc_m = new Enc_CalM(_cal_status_pub);
                     enc_m->do_calibration();
@@ -119,9 +119,9 @@ int Commander_main(int argc, char *argv[])
             uint8_t param2 = (uint8_t)atoi(argv[++i]);
             command.timestamp = micros();
             command.command = CMD_PRE_CALIBRATION;
-            command.param1 = 1;
-            command.param2 = param;
-            command.param3 = (float)param2;
+            command.sub_cmd = 1;
+            command.param1 = param;
+            command.param2 = (float)param2;
 
             ipc_push(IPC_ID(foc_command), cmd_pub, &command);
 
@@ -133,7 +133,7 @@ int Commander_main(int argc, char *argv[])
             orb_advert_t cmd_pub = ipc_active(IPC_ID(foc_command), &command);
             command.timestamp = micros();
             command.command = CMD_PRE_CALIBRATION;
-            command.param1 = 2;
+            command.sub_cmd = 2;
 
             ipc_push(IPC_ID(foc_command), cmd_pub, &command);
 

@@ -35,13 +35,10 @@ typedef struct
     uint32_t mask;
 } CanardSTM32AcceptanceFilterConfiguration;
 
-extern CanardInstance canard;
-
 void uavcan_init(void);
 int CAN_Transmit(const void* txframe);
 int CAN_Receive(void* frame);
-
-void commandack(uint8_t cmd, float param1, float param2);
+void foc_can_mode(uint8_t mode);
 
 #ifdef __cplusplus
 }

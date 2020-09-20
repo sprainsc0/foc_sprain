@@ -8,6 +8,7 @@
 struct foc_command_s {
 	uint64_t timestamp;
     uint16_t command;
+	uint16_t sub_cmd;
 	float param1;
 	float param2;
 	float param3;

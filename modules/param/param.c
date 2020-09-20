@@ -12,12 +12,12 @@
 
 #include "hrt_timer.h"
 #include "uthash/utarray.h"
-#include "ipc.h"
 #include "flashfs.h"
 #include "tinybson.h"
-#include "topics/parameter_update.h"
 #include "misc/crc32.h"
 #include "foc_function.h"
+
+#include "topics/parameter_update.h"
 /**
  * Array of static parameter info.
  */

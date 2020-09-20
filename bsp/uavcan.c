@@ -1,11 +1,19 @@
 #include "uavcan.h"
+#include "can.h"
 #include "ringbuffer.h"
 #include <canard.h>
 #include <stm32f3xx_hal.h>
 #include "cmsis_os.h"
+#include "debug.h"
+#include "hrt_timer.h"
+
+#include "topics/foc_target.h"
 
 uint32_t CAN1TxMailbox;
-extern CAN_HandleTypeDef hcan;
+
+static orb_advert_t foc_ctrl_pub = NULL;
+struct foc_target_s foc_ctrl;
+static uint8_t foc_control_mode = 0;
 
 static struct ringbuffer can1_ring = {0};
 #define CAN1_RINGBUFFER_SIZE     512
@@ -15,6 +23,11 @@ CanardSTM32AcceptanceFilterConfiguration filters[3];
 
 int STM32_CAN_Filters(void *config, uint32_t num_filter_configs);
 uint32_t caculate_filters(uint32_t *id, uint8_t len);
+
+void foc_can_mode(uint8_t mode)
+{
+    foc_control_mode = mode;
+}
 
 void uavcan_init(void)
 {
@@ -26,9 +39,11 @@ void uavcan_init(void)
     };
 
     uint32_t param_id[] = {
-        GET_REQU_RESP_ID(CANARD_TRANSFER_PRIORITY_MEDIUM, UAVCAN_PROTOCOL_PARAM_GETSET_ID, CanardRequest,  mc_cfg.version.node_id, GIMBAL_ID),
-        GET_REQU_RESP_ID(CANARD_TRANSFER_PRIORITY_MEDIUM, UAVCAN_EQUIPMENT_ESC_COMMAND_ID, CanardRequest,  mc_cfg.version.node_id, GIMBAL_ID),
+        GET_REQU_RESP_ID(CANARD_TRANSFER_PRIORITY_MEDIUM, UAVCAN_PROTOCOL_PARAM_GETSET_ID, CanardRequest,  LOCAL_MOTOR_ID, GIMBAL_ID),
+        GET_REQU_RESP_ID(CANARD_TRANSFER_PRIORITY_MEDIUM, UAVCAN_EQUIPMENT_ESC_COMMAND_ID, CanardRequest,  LOCAL_MOTOR_ID, GIMBAL_ID),
     };
+
+    foc_ctrl_pub = ipc_active(IPC_ID(foc_target), &foc_ctrl);
     
     /*## Configure the CAN Filter ###########################################*/
     sFilterConfig.FilterBank = 0;
@@ -45,7 +60,7 @@ void uavcan_init(void)
     if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
     {
         /* Filter configuration Error */
-        Error_Handler();
+        Info_Debug("Can Filter init error \n");
     }
 
     filters[0].id   = BGC_CTRL_ID;
@@ -63,13 +78,9 @@ void uavcan_init(void)
     /*## Start the CAN peripheral ###########################################*/
     if (HAL_CAN_Start(&hcan) != HAL_OK)
     {
-        /* Start Error */
-        Error_Handler();
+        Info_Debug("Can start error \n");
     }
     
-//    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK) {
-//        Error_Handler();
-//    }
     // RX Interrupt
     if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
         Error_Handler();
@@ -233,8 +244,6 @@ int STM32_CAN_Filters(void *config, uint32_t num_filter_configs)
     return 0;
 }
 
-extern void mc_ctrl_torque_write(int16_t t);
-
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CanardCANFrame rxframe;
@@ -246,22 +255,41 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
     rxframe.id = 0;
 
-    int16_t torque[3];
+    int16_t value[4];
 	if(p_rxheader.IDE == CAN_ID_STD) {
-		if(p_rxheader.StdId == BGC_CTRL_ID && !(mc.ctrl_loop & MC_CTRL_OVERRIDE) && !(mc.ctrl_loop & MC_CTRL_TEST) && !(mc.ctrl_loop & MC_CTRL_IDLE)) {
+		if(p_rxheader.StdId == BGC_CTRL_ID) {
 			// control motor
-            memcpy(torque, &rxframe.data[0], sizeof(torque));
-            uint8_t index = (uint8_t)(sqrtf(mc_cfg.version.node_id) - 1);
-            mc_ctrl_torque_write(torque[index]);
+            memcpy(value, &rxframe.data[0], sizeof(value));
+            uint8_t index = (uint8_t)(sqrtf(LOCAL_MOTOR_ID) - 1);
+  
+            foc_ctrl.timestamp = micros();
+            foc_ctrl.iq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.id_target = 0.0f;
+            foc_ctrl.vq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.vd_target = 0.0f;
+            foc_ctrl.ctrl_mode = value[3];
+
+            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+                ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
+            }
 			return;
         }
 		rxframe.id = (CANARD_CAN_STD_ID_MASK & p_rxheader.StdId);
     } else {
-		if(p_rxheader.ExtId == BGC_CTRL_ID && !(mc.ctrl_loop & MC_CTRL_OVERRIDE) && !(mc.ctrl_loop & MC_CTRL_TEST) && !(mc.ctrl_loop & MC_CTRL_IDLE)) {
+		if(p_rxheader.ExtId == BGC_CTRL_ID) {
 			// control motor
-            memcpy(torque, &rxframe.data[0], sizeof(torque));
-            uint8_t index = (uint8_t)(sqrtf(mc_cfg.version.node_id) - 1);
-            mc_ctrl_torque_write(torque[index]);
+            memcpy(value, &rxframe.data[0], sizeof(value));
+            uint8_t index = (uint8_t)(sqrtf(LOCAL_MOTOR_ID) - 1);
+            foc_ctrl.timestamp = micros();
+            foc_ctrl.iq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.id_target = 0.0f;
+            foc_ctrl.vq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.vd_target = 0.0f;
+            foc_ctrl.ctrl_mode = value[3];
+
+            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+                ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
+            }
 			return;
 		}
         rxframe.id = (CANARD_CAN_EXT_ID_MASK & p_rxheader.ExtId) | CANARD_CAN_FRAME_EFF;
@@ -295,24 +323,44 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
     rxframe.id = 0;
 
-    int16_t torque[3];
+    int16_t value[4];
     if(p_rxheader.IDE == CAN_ID_STD) {
-        if(p_rxheader.StdId == BGC_CTRL_ID && !(mc.ctrl_loop & MC_CTRL_OVERRIDE) && !(mc.ctrl_loop & MC_CTRL_TEST) && !(mc.ctrl_loop & MC_CTRL_IDLE)) {
+		if(p_rxheader.StdId == BGC_CTRL_ID) {
 			// control motor
-            memcpy(torque, &rxframe.data[0], sizeof(torque));
-            uint8_t index = (uint8_t)(sqrtf(mc_cfg.version.node_id) - 1);
-            mc_ctrl_torque_write(torque[index]);
+            memcpy(value, &rxframe.data[0], sizeof(value));
+            uint8_t index = (uint8_t)(sqrtf(LOCAL_MOTOR_ID) - 1);
+  
+            foc_ctrl.timestamp = micros();
+            foc_ctrl.iq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.id_target = 0.0f;
+            foc_ctrl.vq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.vd_target = 0.0f;
+            foc_ctrl.ctrl_mode = value[3];
+
+            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+                ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
+            }
 			return;
-		}
+        }
 		rxframe.id = (CANARD_CAN_STD_ID_MASK & p_rxheader.StdId);
     } else {
-		if(p_rxheader.ExtId == BGC_CTRL_ID && !(mc.ctrl_loop & MC_CTRL_OVERRIDE) && !(mc.ctrl_loop & MC_CTRL_TEST) && !(mc.ctrl_loop & MC_CTRL_IDLE)) {
+		if(p_rxheader.ExtId == BGC_CTRL_ID) {
 			// control motor
-            memcpy(torque, &rxframe.data[0], sizeof(torque));
-            uint8_t index = (uint8_t)(sqrtf(mc_cfg.version.node_id) - 1);
-            mc_ctrl_torque_write(torque[index]);
+            memcpy(value, &rxframe.data[0], sizeof(value));
+            uint8_t index = (uint8_t)(sqrtf(LOCAL_MOTOR_ID) - 1);
+
+            foc_ctrl.timestamp = micros();
+            foc_ctrl.iq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.id_target = 0.0f;
+            foc_ctrl.vq_target = (float)(value[index]/32768.0f)*2.0f;
+            foc_ctrl.vd_target = 0.0f;
+            foc_ctrl.ctrl_mode = value[3];
+
+            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+                ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
+            }
 			return;
-		}
+		} 
         rxframe.id = (CANARD_CAN_EXT_ID_MASK & p_rxheader.ExtId) | CANARD_CAN_FRAME_EFF;
     }
 
