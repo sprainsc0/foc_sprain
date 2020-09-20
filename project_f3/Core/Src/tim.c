@@ -68,8 +68,8 @@ void MX_TIM1_Init(void)
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
@@ -82,6 +82,8 @@ void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -89,7 +91,7 @@ void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.DeadTime = 160;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.BreakFilter = 0;
@@ -113,7 +115,7 @@ void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 71;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 499;
+  htim2.Init.Period = 199;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)

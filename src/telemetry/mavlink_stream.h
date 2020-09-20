@@ -31,7 +31,7 @@ public:
 	/**
 	 * @return 0 if updated / sent, -1 if unchanged
 	 */
-	int update(const hrt_abstime t);
+	int update(const uint64_t t);
 	virtual const char *get_name() const = 0;
 	virtual uint16_t get_id() = 0;
 
@@ -59,10 +59,10 @@ protected:
 	Mavlink     *_mavlink;
 	int _interval;		///< if set to negative value = unlimited rate
 
-	virtual bool send(const hrt_abstime t) = 0;
+	virtual bool send(const uint64_t t) = 0;
 
 private:
-	hrt_abstime _last_sent;
+	uint64_t _last_sent;
 
 	/* do not allow top copying this class */
 	MavlinkStream(const MavlinkStream &);

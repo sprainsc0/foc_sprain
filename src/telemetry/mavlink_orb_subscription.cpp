@@ -4,8 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <bgc_defines.h>
-#include "IPC.h"
+#include "ipc.h"
 
 MavlinkOrbSubscription::MavlinkOrbSubscription(const ipc_id_t topic, int instance) :
 	next(nullptr),
@@ -43,7 +42,7 @@ MavlinkOrbSubscription::update(void *data)
 		return false;
 	}
 
-	if (ipc_pull(_topic, _fd, data) != B_EOK) {
+	if (ipc_pull(_topic, _fd, data) != 1) {
 		return false;
 	}
 
@@ -61,7 +60,7 @@ MavlinkOrbSubscription::update_if_changed(void *data)
 
 	bool updated;
 
-	if (ipc_check(_fd, &updated) != B_EOK) {
+	if (ipc_check(_fd, &updated) != 1) {
 		return false;
 	}
 
@@ -82,7 +81,7 @@ MavlinkOrbSubscription::is_published()
 		return true;
 	}
 
-	hrt_abstime now = hrt_absolute_time();
+	uint64_t now = micros();
 
 	if (now - _last_pub_check < 300000) {
 		return false;

@@ -1252,6 +1252,9 @@
             <name>$PROJ_DIR$\..\..\bsp\platform_f3.c</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\bsp\serial.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\bsp\uavcan.c</name>
         </file>
     </group>
@@ -1534,6 +1537,12 @@
             </file>
         </group>
         <group>
+            <name>mavlink</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\modules\mavlink\mavlink_logs.cpp</name>
+            </file>
+        </group>
+        <group>
             <name>param</name>
             <file>
                 <name>$PROJ_DIR$\..\..\modules\param\foc_parameter.c</name>
@@ -1556,12 +1565,21 @@
             <file>
                 <name>$PROJ_DIR$\..\..\src\command\command.cpp</name>
             </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\command\elec_calibration.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\command\mech_calibration.cpp</name>
+            </file>
         </group>
         <group>
             <name>encoder</name>
             <file>
                 <name>$PROJ_DIR$\..\..\src\encoder\encoder.cpp</name>
             </file>
+            <configuration>
+                <name>f3</name>
+            </configuration>
         </group>
         <group>
             <name>foc</name>
@@ -1579,6 +1597,27 @@
             <name>shell</name>
             <file>
                 <name>$PROJ_DIR$\..\..\src\shell\shell.cpp</name>
+            </file>
+        </group>
+        <group>
+            <name>telemetry</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_main.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_messages.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_orb_subscription.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_parameters.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_receiver.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\telemetry\mavlink_stream.cpp</name>
             </file>
         </group>
         <file>

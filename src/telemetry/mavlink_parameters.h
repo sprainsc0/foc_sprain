@@ -2,7 +2,7 @@
 
 #include <param.h>
 #include "hrt_timer.h"
-#include "IPC.h"
+#include "ipc.h"
 #include "mavlink_bridge_header.h"
 #include <topics/parameter_update.h>
 
@@ -18,7 +18,7 @@ public:
 	 * Handle sending of messages. Call this regularly at a fixed frequency.
 	 * @param t current time
 	 */
-	void send(const hrt_abstime t);
+	void send(const uint64_t t);
 
 	unsigned get_size();
 
@@ -49,7 +49,7 @@ protected:
 	int send_param(param_t param, int component_id = -1);
 
 	int _mavlink_parameter_sub;
-	hrt_abstime _param_update_time;
+	uint64_t _param_update_time;
 	int _param_update_index;
 
 	Mavlink *_mavlink;

@@ -41,13 +41,9 @@
 
 #pragma once
 
-#include <IPC.h>
+#include <ipc.h>
 #include "uPerf.h"
 #include "mavlink_parameters.h"
-#include <topics/sensor_mag.h>
-#include <topics/sensor_gps.h>
-#include <topics/fc_information.h>
-#include <topics/gimbal_control.h>
 
 class Mavlink;
 
@@ -67,9 +63,13 @@ public:
 	/**
 	 * Start the receiver thread
 	 */
-	static void receive_start(Mavlink *parent);
+	static bool receive_start(Mavlink *parent);
 
-	static void start_helper(void *context);
+	bool init(void);
+	void *_param;
+    void run(void *parameter);
+protected:
+    osThreadId_t    _handle;
 
 private:
 
@@ -78,9 +78,6 @@ private:
 	 * common method to handle both mavlink command types. T is one of mavlink_command_int_t or mavlink_command_long_t
 	 */
 	void handle_message_heartbeat(mavlink_message_t *msg);
-	void handle_message_control(mavlink_message_t *msg);
-	void handle_message_info(mavlink_message_t *msg);
-	void handle_message_compensation(mavlink_message_t *msg);
 
 	orb_advert_t _telemetry_status_pub;
 
@@ -91,18 +88,6 @@ private:
 	Mavlink	*_mavlink;
 
 	MavlinkParametersManager	_parameters_manager;
-
-	orb_advert_t _info_pub;
-    struct fc_information_s info_raw;
-
-	orb_advert_t _control_pub;
-    struct gimbal_control_s control_raw;
-
-	orb_advert_t _mag_pub;
-    struct sensor_mag_s mag_raw;
-
-	orb_advert_t _vel_pub;
-    struct sensor_gps_s vel_raw;
 
 	mavlink_status_t _status; ///< receiver status, used for mavlink_parse_char()
 

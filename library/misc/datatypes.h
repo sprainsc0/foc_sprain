@@ -36,7 +36,9 @@ extern "C"
     #define M_LN10     2.30258509299404568402f   // ln(10)
     #define M_PI       3.14159265358979323846f   // pi
     #define M_2PI      (M_PI * 2)
+#ifndef M_PI_2
     #define M_PI_2     1.57079632679489661923f   // pi/2
+#endif
     #define M_PI_4     0.785398163397448309616f  // pi/4
     #define M_1_PI     0.318309886183790671538f  // 1/pi
     #define M_2_PI     0.636619772367581343076f  // 2/pi

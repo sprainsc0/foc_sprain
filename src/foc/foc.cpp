@@ -20,7 +20,7 @@ namespace MC_FOC {
 	static FOC *gFOC;
 }
 
-uint8_t FOC::_count = 0;
+bool FOC::_power_state = false;
 
 static void ADC1_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
@@ -36,13 +36,11 @@ FOC::FOC(void):
 	_id_ctrl(0.0f, 0.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_iq_ctrl(0.0f, 0.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_refint(0),
-	target_id(0.0f),
-	target_iq(0.0f),
-	target_phase(0.0f),
+	_pre_foc_mode(0),
 	_param(NULL)
 {
 	memset(&_encoder_data, 0, sizeof(_encoder_data));
-	_mc_cfg.ctrl_loop = 0;
+	memset(&_foc_ref, 0, sizeof(_foc_ref));
 }
 
 FOC::~FOC(void)
@@ -54,11 +52,17 @@ bool FOC::init(void)
 {
 	_params_sub     = ipc_subscibe(IPC_ID(parameter_update));
 	_encoder_sub    = ipc_subscibe(IPC_ID(encoder));
-	_foc_status_pub = ipc_active(IPC_ID(foc_status), &_foc_status);
+	_foc_target_sub = ipc_subscibe(IPC_ID(foc_target));
+	_foc_status_pub = ipc_active(IPC_ID(foc_status), &_foc_m);
+	_led_pub        = ipc_active(IPC_ID(actuator_notify), &_led_state);
 
-	_param_handles.ctrl_loop_handle        = param_find("CTRL_LOOP");
 	_param_handles.foc_sample_v0_v7_handle = param_find("SAM_MODE");
 	_param_handles.duty_max_handle         = param_find("DUTY_MAX");
+
+	_param_handles.curr_d_p_handle         = param_find("CURR_D_P");
+	_param_handles.curr_d_i_handle         = param_find("CURR_D_I");
+	_param_handles.curr_q_p_handle         = param_find("CURR_Q_P");
+	_param_handles.curr_q_i_handle         = param_find("CURR_Q_I");
 
 	foc_adc_int  = perf_alloc(PC_INTERVAL, "adc_int");
 	foc_task_int = perf_alloc(PC_INTERVAL, "foc_int");
@@ -145,9 +149,18 @@ void FOC::parameter_update(bool force)
 		parameter_update_s param_update;
 		ipc_pull(IPC_ID(parameter_update), _params_sub, &param_update);
         
-		param_get(_param_handles.ctrl_loop_handle,        &_mc_cfg.ctrl_loop);
 		param_get(_param_handles.foc_sample_v0_v7_handle, &_mc_cfg.foc_sample_v0_v7);
 		param_get(_param_handles.duty_max_handle,         &_mc_cfg.duty_max);
+
+		param_get(_param_handles.curr_d_p_handle,         &_mc_cfg.curr_d_p);
+		param_get(_param_handles.curr_d_i_handle,         &_mc_cfg.curr_d_i);
+		param_get(_param_handles.curr_q_p_handle,         &_mc_cfg.curr_q_p);
+		param_get(_param_handles.curr_q_i_handle,         &_mc_cfg.curr_q_i);
+
+		_id_ctrl.kP(_mc_cfg.curr_d_p);
+		_id_ctrl.kI(_mc_cfg.curr_d_i);
+		_iq_ctrl.kP(_mc_cfg.curr_q_p);
+		_iq_ctrl.kI(_mc_cfg.curr_q_i);
     }
 }
 
@@ -160,11 +173,36 @@ void FOC::run(void *parammeter)
 		perf_begin(foc_task_ela);
 
 		perf_count(foc_task_int);
+		const uint64_t ts = micros();
 
 		parameter_update(false);
 
+		_refint = adc_msic[2];
+
+		_foc_m.timestamp = ts;
+
+		float adc_value = VREFINT * ((adc_msic[0]*(VREF/4096))/(_refint*(VREF/4096)));
+		_foc_m.vbus = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+		_foc_m.temperature = 0;
+		_foc_m.ctrl_mode = _foc_ref.ctrl_mode;
+
+		float int_limited = (2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus;
+		_id_ctrl.imax(int_limited);
+		_iq_ctrl.imax(int_limited);
+
 		// push foc status
-		ipc_push(IPC_ID(foc_status), _foc_status_pub, &_foc_status);
+		ipc_push(IPC_ID(foc_status), _foc_status_pub, &_foc_m);
+
+		if(_pre_foc_mode != _foc_ref.ctrl_mode) {
+			_pre_foc_mode = _foc_ref.ctrl_mode;
+			if(_foc_ref.ctrl_mode & MC_CTRL_ENABLE) {
+				_led_state.led_status = LED_PATTERN_BGC_ARMED;
+			} else {
+				_led_state.led_status = LED_PATTERN_BGC_DISARM;
+			}
+			_led_state.timestamp = ts;
+			ipc_push(IPC_ID(actuator_notify), _led_pub, &_led_state);
+		}
 
 		perf_end(foc_task_ela);
 
@@ -174,136 +212,138 @@ void FOC::run(void *parammeter)
 
 void FOC::foc_process(void)
 {
-	// wait until foc task ready
-	if (!(_mc_cfg.ctrl_loop & MC_CTRL_ENABLE)) {
-		return;
-	}
-
 	bool is_v7 = !(TIM1->CR1 & TIM_CR1_DIR);
     
     if (!_mc_cfg.foc_sample_v0_v7 && is_v7) {
         return;
     }
 
-	perf_begin(foc_adc_ela);
-
-	float phase_rad, s, c;
-	float i_a[3], i_alpha, i_beta, id, iq, vd, vq;
+	float s, c;
 	float error;
 	float integrator;
-	static uint32_t svm_sector;
-	uint32_t duty1, duty2, duty3, top;
+	uint32_t top;
 
-    float adc_voltage[3];
-	float current[3];
-	float voltage[3];
+    float adc_value;
 
 	perf_count(foc_adc_int);
+
+	bool updated = false;
+	ipc_check(_foc_target_sub, &updated);
+    if(updated) {
+        ipc_pull(IPC_ID(foc_target), _foc_target_sub, &_foc_ref);
+    }
+	
+	// wait until foc task ready
+	if (!(_foc_ref.ctrl_mode & MC_CTRL_ENABLE)) {
+		_id_ctrl.reset_I();
+		_iq_ctrl.reset_I();
+		if(_power_state) {
+			pwm_output_off();
+			_power_state = false;
+		}
+		return;
+	}
     
-    _refint = adc_msic[2];
+    perf_begin(foc_adc_ela);
 
 	// get current date
 	for (uint16_t i = 0; i < 3; i++)
 	{
-        adc_voltage[i] = VREFINT * ((adc_current[i]*(VREF/4096))/(_refint*(VREF/4096)));
-		current[i] = (adc_voltage[i] - _mc_cfg.offset[i]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+        adc_value = VREFINT * ((adc_current[i]*(VREF/4096))/(_refint*(VREF/4096)));
+		_foc_m.i_phase[i] = (adc_value - _mc_cfg.offset[i]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
 	}
 	// get voltage date
 	for (uint16_t i = 0; i < 3; i++)
 	{
-        adc_voltage[i] = VREFINT * ((adc_voltage[i]*(VREF/4096))/(_refint*(VREF/4096)));
-		voltage[i] = adc_voltage[i] * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+        adc_value = VREFINT * ((adc_voltage[i]*(VREF/4096))/(_refint*(VREF/4096)));
+		_foc_m.v_phase[i] = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
 	}
 
     if (_mc_cfg.foc_sample_v0_v7 && is_v7) {
         if (TIM1->CCR1 < TIM1->CCR2 && TIM1->CCR1 < TIM1->CCR3) {
-            i_a[0] = -(current[1] + current[2]);
+            _foc_m.i_phase[0] = -(_foc_m.i_phase[1] + _foc_m.i_phase[2]);
         } else if (TIM1->CCR2 < TIM1->CCR1 && TIM1->CCR2 < TIM1->CCR3) {
-            i_a[1] = -(current[0] + current[2]);
+            _foc_m.i_phase[1] = -(_foc_m.i_phase[0] + _foc_m.i_phase[2]);
         } else if (TIM1->CCR3 < TIM1->CCR1 && TIM1->CCR3 < TIM1->CCR2) {
-            i_a[2] = -(current[0] + current[1]);
+            _foc_m.i_phase[2] = -(_foc_m.i_phase[0] + _foc_m.i_phase[1]);
         }
     } else {
         if (TIM1->CCR1 > TIM1->CCR2 && TIM1->CCR1 > TIM1->CCR3) {
-            i_a[0] = -(current[1] + current[2]);
+            _foc_m.i_phase[0] = -(_foc_m.i_phase[1] + _foc_m.i_phase[2]);
         } else if (TIM1->CCR2 > TIM1->CCR1 && TIM1->CCR2 > TIM1->CCR3) {
-            i_a[1] = -(current[0] + current[2]);
+            _foc_m.i_phase[1] = -(_foc_m.i_phase[0] + _foc_m.i_phase[2]);
         } else if (TIM1->CCR3 > TIM1->CCR1 && TIM1->CCR3 > TIM1->CCR2) {
-            i_a[2] = -(current[0] + current[1]);
+            _foc_m.i_phase[2] = -(_foc_m.i_phase[0] + _foc_m.i_phase[1]);
         }
     }
 
-	bool updated = false;
+	updated = false;
     ipc_check(_encoder_sub, &updated);
     if(updated) {
         ipc_pull(IPC_ID(encoder), _encoder_sub, &_encoder_data);
     }
-	if(!_encoder_data.healthy) {
-		return;
-	}
-	phase_rad = _encoder_data.angle_e;
 
 	// electric period
-	if(_mc_cfg.ctrl_loop & MC_CTRL_OVERRIDE) {
-		phase_rad = target_phase;
+	if(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) {
+		_foc_m.phase_rad = wrap_2PI(_foc_ref.phase_override);
+	} else {
+		_foc_m.phase_rad = _encoder_data.angle_e;
 	}
 
-	s = arm_sin_f32(phase_rad);
-	c = arm_cos_f32(phase_rad);
+	s = arm_sin_f32(_foc_m.phase_rad);
+	c = arm_cos_f32(_foc_m.phase_rad);
 
 	// Clarke transform assuming balanced currents
-	i_alpha = i_a[0];
-	i_beta = ONE_BY_SQRT3 * i_a[0] + TWO_BY_SQRT3 * i_a[1];
+	_foc_m.i_alpha = _foc_m.i_phase[0];
+	_foc_m.i_beta = ONE_BY_SQRT3 * _foc_m.i_phase[0] + TWO_BY_SQRT3 * _foc_m.i_phase[1];
 
 	// park transform
-	id = c * i_alpha + s * i_beta;
-	iq = c * i_beta - s * i_alpha;
+	_foc_m.i_d = c * _foc_m.i_alpha + s * _foc_m.i_beta;
+	_foc_m.i_q = c * _foc_m.i_beta - s * _foc_m.i_alpha;
 
 	// current loop
-	if(_mc_cfg.ctrl_loop & MC_CTRL_CURRENT) {
-		error = target_id - id;
+	if(_foc_ref.ctrl_mode & MC_CTRL_CURRENT) {
+		error = _foc_ref.id_target - _foc_m.i_d;
 		_id_ctrl.set_input_filter_d(error);
 		integrator = _id_ctrl.get_integrator();
-		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if (is_zero(integrator) || (is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
 			integrator = _id_ctrl.get_i();
 		}
-		vd = _id_ctrl.get_p() + integrator + _id_ctrl.get_ff(target_id);
+		_foc_m.v_d = _id_ctrl.get_p() + integrator + _id_ctrl.get_ff(_foc_ref.id_target);
 
-
-		error = target_iq - iq;
+		error = _foc_ref.iq_target - _foc_m.i_q;
 		_iq_ctrl.set_input_filter_d(error);
 		integrator = _iq_ctrl.get_integrator();
-		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if (is_zero(integrator) || (is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
 			integrator = _iq_ctrl.get_i();
 		}
-		vq = _iq_ctrl.get_p() + integrator + _iq_ctrl.get_ff(target_iq);
+		_foc_m.v_q = _iq_ctrl.get_p() + integrator + _iq_ctrl.get_ff(_foc_ref.iq_target);
 	} else {
-		vd = target_id;
-		vq = target_iq;
+		_foc_m.v_d = _foc_ref.vd_target;
+		_foc_m.v_q = _foc_ref.vq_target;
 	}
 	
 	// Saturation (inscribed cycle)
-	vector_2d_saturate(&vd, &vq, _mc_cfg.duty_max * SQRT3_BY_2);
+	vector_2d_saturate(&_foc_m.v_d, &_foc_m.v_q, 
+		(2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus);
+
+	_foc_m.mod_d = _foc_m.v_d / ((2.0 / 3.0) * _foc_m.vbus);
+	_foc_m.mod_q = _foc_m.v_q / ((2.0 / 3.0) * _foc_m.vbus);
 
 	// re-park
-	i_alpha = c * vd - s * vq;
-	i_beta = c * vq + s * vd;
+	float mod_alpha = c * _foc_m.mod_d - s * _foc_m.mod_q;
+	float mod_beta  = c * _foc_m.mod_q + s * _foc_m.mod_d;
 
 	// svpwm
 	top = TIM1->ARR;
-	svm(-i_alpha, -i_beta, top, &duty1, &duty2, &duty3, &svm_sector);
-
-	hal_pwm_duty_write(duty1, duty2, duty3);
+	svm(-mod_alpha, -mod_beta, top, &_foc_m.duty[0], &_foc_m.duty[1], &_foc_m.duty[2], &_foc_m.svm_sector);
 	
-	_foc_status.timestamp = micros();
-	_foc_status.ctrl_mode = _mc_cfg.ctrl_loop;
-	_foc_status.i_phase[0] = i_a[0];
-	_foc_status.i_phase[1] = i_a[1];
-	_foc_status.i_phase[2] = i_a[2];
-	_foc_status.i_alpha    = i_alpha;
-	_foc_status.i_beta     = i_beta;
-	_foc_status.i_q        = iq;
-	_foc_status.i_d        = id;
+	hal_pwm_duty_write(_foc_m.duty[0], _foc_m.duty[1], _foc_m.duty[2]);
+	
+	if(!_power_state) {
+		pwm_output_on();
+		_power_state = true;
+	}
 
 	perf_end(foc_adc_ela);
 }

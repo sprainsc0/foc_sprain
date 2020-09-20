@@ -42,6 +42,7 @@ void startup_task(void *argument)
 
     module_func(shell_main,       "start");
     module_func(Commander_main,   "start");
+    module_func(mavlink_main,     "start");
     
 	osThreadTerminate(startupHandle);
 }

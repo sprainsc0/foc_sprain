@@ -10,7 +10,6 @@ extern "C"{
     
 struct bgc_parameters_t {
     /* -------------------acc calibration parameter------------------- */
-	const struct param_info_s __param__CTRL_LOOP;
     const struct param_info_s __param__SAM_MODE;
     const struct param_info_s __param__DUTY_MAX;
     
@@ -20,6 +19,11 @@ struct bgc_parameters_t {
     const struct param_info_s __param__ENC_M_OFFSET;
     const struct param_info_s __param__ENC_E_INVERT;
     const struct param_info_s __param__ENC_M_INVERT;
+
+    const struct param_info_s __param__CURR_D_P;
+    const struct param_info_s __param__CURR_D_I;
+    const struct param_info_s __param__CURR_Q_P;
+    const struct param_info_s __param__CURR_Q_I;
 
 	const unsigned int param_count;
 };

@@ -23,9 +23,9 @@
 
 if ($debugfile -eq "")
 {
-& "G:\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "K:\BlackBox\bmc_sprain\project_f3\EWARM\settings\f3.f3.general.xcl" --backend -f "K:\BlackBox\bmc_sprain\project_f3\EWARM\settings\f3.f3.driver.xcl" 
+& "H:\IAR Systems\common\bin\cspybat" -f "E:\SPRain-Core\foc_sprain\project_f3\EWARM\settings\f3.f3.general.xcl" --backend -f "E:\SPRain-Core\foc_sprain\project_f3\EWARM\settings\f3.f3.driver.xcl" 
 }
 else
 {
-& "G:\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "K:\BlackBox\bmc_sprain\project_f3\EWARM\settings\f3.f3.general.xcl" --debug_file=$debugfile --backend -f "K:\BlackBox\bmc_sprain\project_f3\EWARM\settings\f3.f3.driver.xcl" 
+& "H:\IAR Systems\common\bin\cspybat" -f "E:\SPRain-Core\foc_sprain\project_f3\EWARM\settings\f3.f3.general.xcl" --debug_file=$debugfile --backend -f "E:\SPRain-Core\foc_sprain\project_f3\EWARM\settings\f3.f3.driver.xcl" 
 }

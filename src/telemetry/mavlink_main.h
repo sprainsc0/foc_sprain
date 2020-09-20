@@ -1,7 +1,8 @@
 #ifndef __MAVLINK_H__
 #define __MAVLINK_H__
 
-#include "thread.h"
+#include "cmsis_os.h"
+#include <semphr.h>
 #include "ipc.h"
 #include "uPerf.h"
 #include <param.h>
@@ -11,36 +12,22 @@
 #include "mavlink_stream.h"
 #include "mavlink_orb_subscription.h"
 
-
-
 #include <topics/parameter_update.h>
 #include <topics/telemetry_status.h>
 
 #define HASH_PARAM "_HASH_CHECK"
 
-using namespace mcthread;
-
-class Mavlink : public Thread
+class Mavlink
 {
 public:
     Mavlink(void);
     ~Mavlink(void);
-    
-	struct Device *telemetry_port;
 
-    static int start(int argc, char *argv[]);
-    static void start_helper(void *param);
+    bool init(void);
+	
+	void *_param;
+    void run(void *parameter);
 
-    void init(char *dev);
-    void task_main(void *param);
-
-    static int instance_count();
-
-    static Mavlink *new_instance();
-
-	static Mavlink *get_instance(unsigned instance);
-
-    int get_instance_id();
     mavlink_channel_t	get_channel();
 
     MavlinkStream 		*get_streams() const { return _streams; }
@@ -57,7 +44,7 @@ public:
 
     unsigned		get_system_type() { return _system_type; }
 
-    bool			is_connected() { return ((_rstatus.heartbeat_time > 0) && (hrt_absolute_time() - _rstatus.heartbeat_time < 3000000)); }
+    bool			is_connected() { return ((_rstatus.heartbeat_time > 0) && (micros() - _rstatus.heartbeat_time < 3000000)); }
 
     /**
 	 * Get the receive status of this MAVLink link
@@ -153,13 +140,12 @@ public:
 	void			send_statustext(unsigned char severity, const char *string);
 
 protected:
-	Mavlink			*next;
+    osThreadId_t    _handle;
 
 private:
 
-    OS_MUTEX            _send_mutex;
+    SemaphoreHandle_t   _send_mutex;
 
-    int			        _instance_id;
     mavlink_channel_t	_channel;
 
 	int			    _baudrate;
@@ -188,7 +174,6 @@ private:
 	mavlink_status_t _mavlink_status;
 
     bool			_transmitting_enabled;
-    bool			_is_usb_uart;		/**< Port is USB */
 	bool			_wait_to_transmit;  	/**< Wait to transmit until received messages. */
 	bool			_received_messages;	/**< Whether we've received valid mavlink messages. */
 

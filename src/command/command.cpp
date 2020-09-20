@@ -7,7 +7,7 @@
 const osThreadAttr_t cmd_attributes = {
 		.name = "cmd",
 		.priority = (osPriority_t)osPriorityAboveNormal,
-		.stack_size = 1024};
+		.stack_size = 2048};
 
 namespace CMD
 {
@@ -27,6 +27,9 @@ Command::Command(void):
 
 bool Command::init(void)
 {
+    _commander_sub = ipc_subscibe(IPC_ID(foc_command));
+    _led_notify_pub = ipc_active(IPC_ID(actuator_notify), &_led_notify);
+    
     _handle = osThreadNew((osThreadFunc_t)cmd_func, this, &cmd_attributes);
 
     if (_handle != nullptr) {
@@ -36,11 +39,46 @@ bool Command::init(void)
 	return false;
 }
 
+void Command::enter_cali_mode(void)
+{
+    _led_notify.timestamp = micros();
+    _led_notify.led_status = LED_PATTERN_BGC_CAL;
+    ipc_push(IPC_ID(actuator_notify), _led_notify_pub, &_led_notify);
+}
+
+void Command::exit_cali_mode(void)
+{
+    _led_notify.timestamp = micros();
+    _led_notify.led_status = LED_PATTERN_BGC_DISARM;
+    ipc_push(IPC_ID(actuator_notify), _led_notify_pub, &_led_notify);
+}
+
 void Command::run(void *parameter)
 {
     while (1)
     {
-        
+        bool cmd_updated = false;
+        ipc_check(_commander_sub, &cmd_updated);
+        if (cmd_updated) {
+            ipc_pull(IPC_ID(foc_command), _commander_sub, &_command);
+            switch(_command.command) {
+            case CMD_PRE_CALIBRATION:
+                if (((int)(_command.param1)) == 1) {
+                    enter_cali_mode();
+                    enc_e = new Enc_CalE(_cal_status_pub);
+                    enc_e->do_calibration(_command.param2, (uint8_t)_command.param3);
+                    delete enc_e;
+                    exit_cali_mode();
+                }  else if (((int)(_command.param1)) == 2) {
+                    enter_cali_mode();
+                    enc_m = new Enc_CalM(_cal_status_pub);
+                    enc_m->do_calibration();
+                    delete enc_m;
+                    exit_cali_mode();
+                }
+                break;
+            }
+        }
         // 10Hz loop
         osDelay(100);
     }
@@ -50,7 +88,7 @@ int Commander_main(int argc, char *argv[])
 {
     if (argc < 1) {
 		Info_Debug("input argv error\n");
-		return 1;
+		return 0;
 	}
     for(int i=0; i<argc; i++) {
         if (!strcmp(argv[i], "start")) {
@@ -67,6 +105,39 @@ int Commander_main(int argc, char *argv[])
                 return 0;
             }
             CMD::gCmd->init();
+        }
+
+        if (!strcmp(argv[i], "ence")) {
+            if (argc < 3) {
+                Info_Debug("input argv error\n");
+                Info_Debug("cmd ence [torque] [use_current]\n");
+                return 0;
+            }
+            struct foc_command_s command;
+            orb_advert_t cmd_pub = ipc_active(IPC_ID(foc_command), &command);
+            float param = (float)atof(argv[++i]);
+            uint8_t param2 = (uint8_t)atoi(argv[++i]);
+            command.timestamp = micros();
+            command.command = CMD_PRE_CALIBRATION;
+            command.param1 = 1;
+            command.param2 = param;
+            command.param3 = (float)param2;
+
+            ipc_push(IPC_ID(foc_command), cmd_pub, &command);
+
+            ipc_inactive(cmd_pub);
+        }
+
+        if (!strcmp(argv[i], "encm")) {
+            struct foc_command_s command;
+            orb_advert_t cmd_pub = ipc_active(IPC_ID(foc_command), &command);
+            command.timestamp = micros();
+            command.command = CMD_PRE_CALIBRATION;
+            command.param1 = 2;
+
+            ipc_push(IPC_ID(foc_command), cmd_pub, &command);
+
+            ipc_inactive(cmd_pub);
         }
     }
     return 1;

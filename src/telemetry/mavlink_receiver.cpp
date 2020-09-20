@@ -8,25 +8,36 @@
 #include <float.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <param.h>
-#include <bgc_function.h>
+#include "param.h"
+#include "foc_function.h"
+#include "serial.h"
+#include "debug.h"
 
 #include "mavlink_messages.h"
 #include "mavlink_bridge_header.h"
 #include "mavlink_receiver.h"
 #include "mavlink_main.h"
 
+const osThreadAttr_t telr_attributes = {
+		.name = "telr",
+		.priority = (osPriority_t)osPriorityHigh,
+		.stack_size = 1024};
 
-#define  APP_CFG_TASK_RECV_STK_SIZE            1024u
+namespace MavR {
+	static MavlinkReceiver *gRecv;
+}
 
-static  OS_TCB       AppTaskRECVTCB[2];
-static  CPU_STK      AppTaskRECVStk[2][APP_CFG_TASK_RECV_STK_SIZE];
+static void mavrecv_func(MavlinkReceiver *pThis)
+{
+    pThis->run(pThis->_param);
+}
 
 MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	_mavlink(parent),
 	_status{},
 	_telemetry_status_pub(nullptr),
-    _parameters_manager(parent)
+    _parameters_manager(parent),
+	_param(nullptr)
 {
 }
 
@@ -42,15 +53,6 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_HEARTBEAT:
 		handle_message_heartbeat(msg);
-		break;
-	case MAVLINK_MSG_ID_CONTROL:
-		handle_message_control(msg);
-		break;
-	case MAVLINK_MSG_ID_FCINFO:
-		handle_message_info(msg);
-		break;
-	case MAVLINK_MSG_ID_COMPENSATION:
-		handle_message_compensation(msg);
 		break;
 	default:
 		break;
@@ -76,7 +78,7 @@ void MavlinkReceiver::handle_message_heartbeat(mavlink_message_t *msg)
 			/* set heartbeat time and topic time and publish -
 			 * the telem status also gets updated on telemetry events
 			 */
-			tstatus.timestamp = hrt_absolute_time();
+			tstatus.timestamp = micros();
 			tstatus.heartbeat_time = tstatus.timestamp;
 
 			if (_telemetry_status_pub == nullptr) {
@@ -89,84 +91,13 @@ void MavlinkReceiver::handle_message_heartbeat(mavlink_message_t *msg)
 	}
 }
 
-void MavlinkReceiver::handle_message_control(mavlink_message_t *msg)
-{
-	/* telemetry status supported only on first TELEMETRY_STATUS_ORB_ID_NUM mavlink channels */
-	if (_mavlink->get_channel() < (mavlink_channel_t)IPC_MULTI_MAX_INSTANCES) {
-		mavlink_control_t hb;
-		mavlink_msg_control_decode(msg, &hb);
-
-		/* ignore own heartbeats, accept only heartbeats from GCS */
-		if (msg->sysid != mavlink_system.sysid) {
-			control_raw.timestamp = hrt_absolute_time();
-			control_raw.rate[0] = hb.rate_x * M_DEG_TO_RAD_F;
-			control_raw.rate[1] = hb.rate_y * M_DEG_TO_RAD_F;
-			control_raw.rate[2] = hb.rate_z * M_DEG_TO_RAD_F;
-			control_raw.angle[0] = hb.angle_x * M_DEG_TO_RAD_F;
-			control_raw.angle[1] = hb.angle_y * M_DEG_TO_RAD_F;
-			control_raw.angle[2] = hb.angle_z * M_DEG_TO_RAD_F;
-			control_raw.mode = hb.mode;
-			ipc_push(IPC_ID(gimbal_control), _control_pub, &control_raw);
-		}
-	}
-}
-
-void MavlinkReceiver::handle_message_info(mavlink_message_t *msg)
-{
-	/* telemetry status supported only on first TELEMETRY_STATUS_ORB_ID_NUM mavlink channels */
-	if (_mavlink->get_channel() < (mavlink_channel_t)IPC_MULTI_MAX_INSTANCES) {
-		mavlink_fcinfo_t hb;
-		mavlink_msg_fcinfo_decode(msg, &hb);
-
-		/* ignore own heartbeats, accept only heartbeats from GCS */
-		if (msg->sysid != mavlink_system.sysid) {
-			info_raw.timestamp = hrt_absolute_time();
-			info_raw.eular[0] = hb.eular_x;
-			info_raw.eular[1] = hb.eular_y;
-			info_raw.eular[2] = hb.eular_z;
-			info_raw.target_eular[0] = hb.target_eular_x / 100.0f * M_DEG_TO_RAD_F;
-			info_raw.target_eular[1] = hb.target_eular_y / 100.0f * M_DEG_TO_RAD_F;
-			info_raw.target_eular[2] = hb.target_eular_z / 100.0f * M_DEG_TO_RAD_F;
-			info_raw.target_yaw_rate = hb.target_yaw_rate;
-			info_raw.flighting = hb.flighting;
-			ipc_push(IPC_ID(fc_information), _info_pub, &info_raw);
-		}
-	}
-}
-
-void MavlinkReceiver::handle_message_compensation(mavlink_message_t *msg)
-{
-	/* telemetry status supported only on first TELEMETRY_STATUS_ORB_ID_NUM mavlink channels */
-	if (_mavlink->get_channel() < (mavlink_channel_t)IPC_MULTI_MAX_INSTANCES) {
-		mavlink_compensation_t hb;
-		mavlink_msg_compensation_decode(msg, &hb);
-
-		/* ignore own heartbeats, accept only heartbeats from GCS */
-		if (msg->sysid != mavlink_system.sysid) {
-			mag_raw.timestamp = hrt_absolute_time();
-			vel_raw.timestamp = mag_raw.timestamp;
-			mag_raw.field[0] = hb.mag_x;
-			mag_raw.field[1] = hb.mag_y;
-			mag_raw.field[2] = hb.mag_z;
-			mag_raw.decl = hb.decl;
-			vel_raw.vel_ned_m_s[0] = hb.acc_x;
-			vel_raw.vel_ned_m_s[1] = hb.acc_y;
-			vel_raw.vel_ned_m_s[2] = hb.acc_z;
-
-			ipc_push(IPC_ID(sensor_mag), _mag_pub, &mag_raw);
-			ipc_push(IPC_ID(sensor_gps), _vel_pub, &vel_raw);
-		}
-	}
-}
-
 /**
  * Receive data from UART.
  */
-void MavlinkReceiver::receive_thread(void *arg)
+void MavlinkReceiver::run(void *parameter)
 {
 	// poll timeout in ms. Also defines the max update frequency of the mission & param manager, etc.
 	const int timeout = 10;
-	OS_ERR   err;
 
 	/* the serial port buffers internally as well, we just need to fit a small chunk */
 	uint8_t buf[64];
@@ -174,16 +105,11 @@ void MavlinkReceiver::receive_thread(void *arg)
 	mavlink_message_t msg;
 
 	uint16_t nread = 0;
-	hrt_abstime last_send_update = 0;
-
-	_info_pub    = ipc_active(IPC_ID(fc_information), &info_raw);
-	_control_pub = ipc_active(IPC_ID(gimbal_control), &control_raw);
-	_mag_pub     = ipc_active(IPC_ID(sensor_mag), &mag_raw);
-	_vel_pub     = ipc_active(IPC_ID(sensor_gps), &vel_raw);
+	uint64_t last_send_update = 0;
 
 	pref_receive_interval = perf_alloc(PC_INTERVAL, "recv_int");
 
-	while (DEF_TRUE) {
+	while (1) {
 
 		perf_count(pref_receive_interval);
 		/*
@@ -192,12 +118,12 @@ void MavlinkReceiver::receive_thread(void *arg)
 			*/
 		const unsigned character_count = 20;
 
-		nread = uart_read(_mavlink->telemetry_port, buf, sizeof(buf));
+		nread = hal_uart_read(buf, sizeof(buf));
 
 		/* non-blocking read. read may return negative values */
 		if (nread < (uint16_t)character_count) {
 			unsigned sleeptime = (unsigned)((1.0f / (_mavlink->get_baudrate() / 10)) * character_count * 1000);
-			OSTimeDly((OS_TICK)(TICK_PER_MS * sleeptime), OS_OPT_TIME_DLY, &err);
+			osDelay(sleeptime);
 		}
 		// only start accepting messages once we're sure who we talk to
 
@@ -218,7 +144,7 @@ void MavlinkReceiver::receive_thread(void *arg)
 			_mavlink->count_rxbytes(nread);
 		}
 
-		hrt_abstime t = hrt_absolute_time();
+		uint64_t t = micros();
 
 		if (t - last_send_update > timeout * 1000) {
 
@@ -228,44 +154,34 @@ void MavlinkReceiver::receive_thread(void *arg)
 		}
 
 		// 100Hz loop
-        OSTimeDly((OS_TICK)(TICK_PER_MS * 10), OS_OPT_TIME_PERIODIC, &err);
+        osDelay(10);
 	}
 }
 
-void MavlinkReceiver::start_helper(void *context)
+bool MavlinkReceiver::init()
 {
-	MavlinkReceiver *rcv = new MavlinkReceiver((Mavlink *)context);
+	_handle = osThreadNew((osThreadFunc_t)mavrecv_func, this, &telr_attributes);
 
-	if (!rcv) {
-		Info_Debug("alloc failed");
-		return;
-	}
-	rcv->receive_thread(nullptr);
+    if (_handle == nullptr) {
+		Info_Debug("telemetry task start error!\n");
+        return false;
+    }
 
-	delete rcv;
+	return true;
 }
 
-void
+bool
 MavlinkReceiver::receive_start(Mavlink *parent)
 {
-	OS_ERR   err;
-    
-	int ic = parent->get_instance_id();
+	MavR::gRecv = new MavlinkReceiver(parent);
+	if (MavR::gRecv == nullptr) {
+		Info_Debug("alloc failed");
+		return false;
+	}
 
-	OSTaskCreate(&AppTaskRECVTCB[ic],
-                  (char*)"TaskRecv",
-                  MavlinkReceiver::start_helper,
-                  (void *)parent,
-                  APP_CFG_TASK_RECV_PRIO,
-                  &AppTaskRECVStk[ic][0u],
-                  AppTaskRECVStk[ic][APP_CFG_TASK_RECV_STK_SIZE / 10u],
-                  APP_CFG_TASK_RECV_STK_SIZE,
-                  0u,
-                  0u,
-                  0u,
-                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR | OS_OPT_TASK_SAVE_FP),
-                 &err);
-    if(err != OS_ERR_NONE) {
-        Info_Debug("telemetry task start error!\n");
-    }
+	if(!MavR::gRecv->init()) {
+		delete MavR::gRecv;
+		return false;
+	}
+	return true;
 }

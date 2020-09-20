@@ -2,7 +2,7 @@
 #define MAVLINK_ORB_SUBSCRIPTION_H_
 
 #include <utlist.h>
-#include "IPC.h"	// ipc_id_t
+#include "ipc.h"	// ipc_id_t
 #include "hrt_timer.h"
 
 class MavlinkOrbSubscription
@@ -47,7 +47,7 @@ private:
 	int _fd;			///< subscription handle
 	const uint8_t _instance;		///< get topic instance
 	bool _published;		///< topic was ever published
-	hrt_abstime _last_pub_check;	///< when we checked last
+	uint64_t _last_pub_check;	///< when we checked last
 
 	/* do not allow copying this class */
 	MavlinkOrbSubscription(const MavlinkOrbSubscription &);

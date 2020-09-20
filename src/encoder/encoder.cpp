@@ -55,7 +55,7 @@ bool Encoder::init(void)
 	enc_tim_ela  = perf_alloc(PC_ELAPSED, "tim_ela");
 	enc_task_ela = perf_alloc(PC_ELAPSED, "enc_ela");
 
-	enc_err_count = perf_alloc(PC_COUNT, "enc_ela");
+	enc_err_count = perf_alloc(PC_COUNT, "enc_err");
 
 	HAL_TIM_RegisterCallback(&htim2, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM2_PeriodElapsedCallback);
 

@@ -16,6 +16,7 @@ static Shell	*gShell;
 }
 
 int perf_main(int argc, char *argv[]);
+int motor_main(int argc, char *argv[]);
 
 static void shell_func(Shell *pThis)
 {
@@ -66,12 +67,13 @@ void Shell::process_cmd()
          perf_main(nargs, args);
     } else if(!strcmp(name, "param")) {
          param_main(nargs, args);
-    }
-    // } else if(!strcmp(name, "uavcan")) {
-    //     canlink_main(nargs, args);
-    // } else if(!strcmp(name, "cmd")) {
-    //     cmd_main(nargs, args);
-    else if(!strcmp(name, "reboot")) {
+    } else if(!strcmp(name, "flash")) {
+         flashfs_main(nargs, args);
+    } else if(!strcmp(name, "motor")) {
+         motor_main(nargs, args);
+    } else if(!strcmp(name, "cmd")) {
+         Commander_main(nargs, args);
+    } else if(!strcmp(name, "reboot")) {
          HAL_NVIC_SystemReset();
     }
 }
@@ -171,3 +173,65 @@ int perf_main(int argc, char *argv[])
     }
     return 1;
 }
+
+orb_advert_t _foc_ref_pub = nullptr;
+int motor_main(int argc, char *argv[])
+{
+    if (argc < 1) {
+		Info_Debug("input argv error\n");
+		return 1;
+	}
+    
+    for(int i=0; i<argc; i++) {
+        if (!strcmp(argv[i], "runv")) {
+            if (argc < 2) {
+                Info_Debug("input argv error\n");
+                return 0;
+            }
+            float param = (float)atof(argv[++i]);
+            struct foc_target_s foc_ref;
+            if(_foc_ref_pub == nullptr) {
+                _foc_ref_pub = ipc_active(IPC_ID(foc_target), &foc_ref);
+            }
+            foc_ref.ctrl_mode = MC_CTRL_ENABLE;
+            foc_ref.id_target = 0;
+            foc_ref.iq_target = 0;
+            foc_ref.vd_target = 0;
+            foc_ref.vq_target = param;
+            ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
+        }
+
+        if (!strcmp(argv[i], "runi")) {
+            if (argc < 2) {
+                Info_Debug("input argv error\n");
+                return 0;
+            }
+            float param = (float)atof(argv[++i]);
+            struct foc_target_s foc_ref;
+            if(_foc_ref_pub == nullptr) {
+                _foc_ref_pub = ipc_active(IPC_ID(foc_target), &foc_ref);
+            }
+            foc_ref.ctrl_mode = (MC_CTRL_CURRENT | MC_CTRL_ENABLE);
+            foc_ref.id_target = 0;
+            foc_ref.iq_target = param;
+            foc_ref.vd_target = 0;
+            foc_ref.vq_target = 0;
+            ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
+        }
+
+        if (!strcmp(argv[i], "idle")) {
+            struct foc_target_s foc_ref;
+            if(_foc_ref_pub == nullptr) {
+                _foc_ref_pub = ipc_active(IPC_ID(foc_target), &foc_ref);
+            }
+            foc_ref.ctrl_mode = 0;
+            foc_ref.id_target = 0;
+            foc_ref.iq_target = 0;
+            foc_ref.vd_target = 0;
+            foc_ref.vq_target = 0;
+            ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
+        }
+    }
+    return 1;
+}
+

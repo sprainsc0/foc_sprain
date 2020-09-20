@@ -28,7 +28,7 @@ MavlinkStream::set_interval(const int interval)
  * Update subscriptions and send message if necessary
  */
 int
-MavlinkStream::update(const hrt_abstime t)
+MavlinkStream::update(const uint64_t t)
 {
 	// If the message has never been sent before we want
 	// to send it immediately and can return right away
@@ -38,7 +38,7 @@ MavlinkStream::update(const hrt_abstime t)
 		// on the link scheduling
 
 		if (send(t)) {
-			_last_sent = hrt_absolute_time();
+			_last_sent = micros();
 		}
 		return 0;
 	}

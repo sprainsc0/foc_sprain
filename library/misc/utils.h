@@ -26,6 +26,7 @@ float wrap_PI(float radian);
 
 float angles_mean(float *angles, int angles_num);
 float angles_mean2(float *angles, int angles_num);
+float angle_difference(float angle1, float angle2);
 float angles_variance(float *angles, int angles_num);
 bool vector_2d_saturate(float *x, float *y, float max);
 

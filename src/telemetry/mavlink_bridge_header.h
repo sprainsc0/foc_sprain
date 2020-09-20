@@ -53,11 +53,7 @@
 #define MAVLINK_GET_CHANNEL_BUFFER mavlink_get_channel_buffer
 #define MAVLINK_GET_CHANNEL_STATUS mavlink_get_channel_status
 
-#if defined(MAVLINK_V20)
-#include <v2.0/mavlink_types.h>
-#else
 #include <v1.0/mavlink_types.h>
-#endif
 
 #ifdef __cplusplus
 extern  "C" {
@@ -89,11 +85,7 @@ void mavlink_end_uart_send(mavlink_channel_t chan, int length);
 extern mavlink_status_t *mavlink_get_channel_status(uint8_t chan);
 extern mavlink_message_t *mavlink_get_channel_buffer(uint8_t chan);
 
-#if defined(MAVLINK_V20)
-#include <v2.0/common_v20/mavlink.h>
-#else
 #include <v1.0/common_v10/mavlink.h>
-#endif
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,7 @@
 #include "uPerf.h"
 
 #include "topics/actuator_notify.h"
+#include "topics/foc_target.h"
 
 class Shell
 {

@@ -149,7 +149,7 @@ MavlinkParametersManager::handle_message(const mavlink_message_t *msg)
 }
 
 void
-MavlinkParametersManager::send(const hrt_abstime t)
+MavlinkParametersManager::send(const uint64_t t)
 {
 	int max_num_to_send;
 
@@ -206,7 +206,7 @@ MavlinkParametersManager::send_untransmitted()
 		}
 	}
 
-	if ((_param_update_time != 0) && ((_param_update_time + 5 * 1000) < hrt_absolute_time())) {
+	if ((_param_update_time != 0) && ((_param_update_time + 5 * 1000) < micros())) {
 
 		param_t param = 0;
 
@@ -226,7 +226,7 @@ MavlinkParametersManager::send_untransmitted()
 				strncpy(&buf[0], param_name(param), MAVLINK_MSG_PARAM_VALUE_FIELD_PARAM_ID_LEN);
 				sent_one = true;
 
-				if (ret != B_EOK) {
+				if (ret != 1) {
 					break;
 				}
 			}
@@ -291,7 +291,7 @@ MavlinkParametersManager::send_one()
 			return true;
 		}
 
-	} else if (_send_all_index == PARAM_HASH && hrt_absolute_time() > 20 * 1000 * 1000) {
+	} else if (_send_all_index == PARAM_HASH && micros() > 20 * 1000 * 1000) {
 		/* the boot did not seem to ever complete, warn user and set boot complete */
 		_mavlink->send_statustext_critical("WARNING: SYSTEM BOOT INCOMPLETE. CHECK CONFIG.");
 	}
@@ -303,12 +303,12 @@ int
 MavlinkParametersManager::send_param(param_t param, int component_id)
 {
 	if (param == PARAM_INVALID) {
-		return 1;
+		return 0;
 	}
 
 	/* no free TX buf to send this param */
 	if (_mavlink->get_free_tx_buf() < MAVLINK_MSG_ID_PARAM_VALUE_LEN) {
-		return 1;
+		return 0;
 	}
 
 	mavlink_param_value_t msg;
@@ -317,8 +317,8 @@ MavlinkParametersManager::send_param(param_t param, int component_id)
 	 * get param value, since MAVLink encodes float and int params in the same
 	 * space during transmission, copy param onto float val_buf
 	 */
-	if (param_get(param, &msg.param_value) != B_EOK) {
-		return 2;
+	if (param_get(param, &msg.param_value) != 1) {
+		return 0;
 	}
 
 	msg.param_count = param_count_used();
@@ -367,6 +367,6 @@ MavlinkParametersManager::send_param(param_t param, int component_id)
 		_mavlink_resend_uart(_mavlink->get_channel(), &mavlink_packet);
 	}
 
-	return 0;
+	return 1;
 }
 

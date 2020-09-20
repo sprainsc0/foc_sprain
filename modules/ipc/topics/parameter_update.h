@@ -4,11 +4,8 @@
 #include "ipc.h"
 
 #define PARAM_UPDATE_CALIBRATED_ALL            0
-#define PARAM_UPDATE_CALIBRATED_ACCEL          1
-#define PARAM_UPDATE_CALIBRATED_MAG            2
-#define PARAM_UPDATE_CALIBRATED_BARO           3
-#define PARAM_UPDATE_CALIBRATED_RC             4
-#define PARAM_UPDATE_CALIBRATED_GYRO           5
+#define PARAM_UPDATE_CALIBRATED_EANG           1
+#define PARAM_UPDATE_CALIBRATED_MANG           2
 
 struct parameter_update_s {
 	uint64_t timestamp; // required for logger

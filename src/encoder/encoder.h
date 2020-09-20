@@ -31,12 +31,12 @@ protected:
 
 private:
 	struct enc_config {
-        uint8_t type;
-        float   offset_e;
-        float   offset_m;
-		uint8_t invert_e;
-		uint8_t invert_m;
-		uint8_t pair_num;
+        int   type;
+        float offset_e;
+        float offset_m;
+		int   invert_e;
+		int   invert_m;
+		int   pair_num;
     } _enc_cfg;
 
 	struct {

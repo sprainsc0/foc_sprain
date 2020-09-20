@@ -10,7 +10,7 @@
 //#define CAN_LOCAL_ADDR					CAN_ADDR_YAW
 
 // enc
-#define ENC_ELEC_STABLE_VAR_TOR			0.0004f
+#define ENC_ELEC_STABLE_VAR_TOR			0.004f
 #define ENC_MECH_STABLE_VAR_TOR			0.004f
 
 /* fixed */

@@ -11,8 +11,10 @@
 #include "param.h"
 
 #include "topics/parameter_update.h"
+#include "topics/actuator_notify.h"
 #include "topics/encoder.h"
 #include "topics/foc_status.h"
+#include "topics/foc_target.h"
 
 #define ADC_CURRENT_OHM		                  0.1f
 #define ADC_CURRENT_AMP		                  20.0f
@@ -44,19 +46,28 @@ protected:
     osThreadId_t _handle;
 
 private:
-    static uint8_t _count;
+    static bool _power_state;
+    uint8_t _pre_foc_mode;
     
     struct motor_config {
-        uint8_t ctrl_loop;
-        bool    foc_sample_v0_v7;
-        float   offset[3];
-        float   duty_max;
+        int   foc_sample_v0_v7;
+        float offset[3];
+        float duty_max;
+
+        float curr_d_p;
+        float curr_d_i;
+        float curr_q_p;
+        float curr_q_i;
     } _mc_cfg;
 
     struct {
-        param_t ctrl_loop_handle;
         param_t foc_sample_v0_v7_handle;
         param_t duty_max_handle;
+
+        param_t curr_d_p_handle;
+        param_t curr_d_i_handle;
+        param_t curr_q_p_handle;
+        param_t curr_q_i_handle;
     } _param_handles;
 
     // 参考电压
@@ -67,12 +78,14 @@ private:
     int _encoder_sub;
     struct encoder_s _encoder_data;
 
-    orb_advert_t _foc_status_pub;
-    struct foc_status_s _foc_status;
+    int _foc_target_sub;
+    struct foc_target_s _foc_ref;
 
-    float target_id;
-    float target_iq;
-    float target_phase;
+    orb_advert_t _foc_status_pub;
+    struct foc_status_s _foc_m;
+
+    orb_advert_t _led_pub;
+    struct actuator_notify_s _led_state;
 
     PID _id_ctrl;
     PID _iq_ctrl;
