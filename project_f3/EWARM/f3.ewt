@@ -1583,9 +1583,6 @@
             <file>
                 <name>$PROJ_DIR$\..\..\src\encoder\encoder.cpp</name>
             </file>
-            <configuration>
-                <name>f3</name>
-            </configuration>
         </group>
         <group>
             <name>foc</name>

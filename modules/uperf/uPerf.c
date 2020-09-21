@@ -133,7 +133,8 @@ perf_count(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-
+    
+    __disable_irq();
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count++;
@@ -141,7 +142,7 @@ perf_count(perf_counter_t handle)
 
 	case PC_INTERVAL: {
 			struct perf_ctr_interval *pci = (struct perf_ctr_interval *)handle;
-			uint64_t now = micros();
+			const uint64_t now = micros();
 
 			switch (pci->event_count) {
 			case 0:
@@ -156,7 +157,7 @@ perf_count(perf_counter_t handle)
 				break;
 
 			default: {
-					uint64_t interval = now - pci->time_last;
+					const uint64_t interval = now - pci->time_last;
 
 					if ((uint32_t)interval < pci->time_least) {
 						pci->time_least = (uint32_t)interval;
@@ -168,8 +169,8 @@ perf_count(perf_counter_t handle)
 
 					// maintain mean and variance of interval in seconds
 					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					float dt = interval / 1e6f;
-					float delta_intvl = dt - pci->mean;
+					const float dt = interval / 1e6f;
+					const float delta_intvl = dt - pci->mean;
 					pci->mean += delta_intvl / pci->event_count;
 					pci->M2 += delta_intvl * (dt - pci->mean);
 					break;
@@ -184,6 +185,7 @@ perf_count(perf_counter_t handle)
 	default:
 		break;
 	}
+    __enable_irq();
 }
 
 void
@@ -192,7 +194,7 @@ perf_begin(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-
+    __disable_irq();
 	switch (handle->type) {
 	case PC_ELAPSED:
 		((struct perf_ctr_elapsed *)handle)->time_start = micros();
@@ -201,6 +203,7 @@ perf_begin(perf_counter_t handle)
 	default:
 		break;
 	}
+    __enable_irq();
 }
 
 void
@@ -209,7 +212,7 @@ perf_end(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-
+    __disable_irq();
 	switch (handle->type) {
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
@@ -246,6 +249,7 @@ perf_end(perf_counter_t handle)
 	default:
 		break;
 	}
+    __enable_irq();
 }
 
 void

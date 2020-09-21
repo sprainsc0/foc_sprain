@@ -243,7 +243,7 @@ void FOC::foc_process(void)
 		}
 		return;
 	}
-    
+
     perf_begin(foc_adc_ela);
 
 	// get current date

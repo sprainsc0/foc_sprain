@@ -21,7 +21,7 @@ orb_advert_t ipc_active(const struct ipc_metadata *meta, const void *data)
 
 orb_advert_t ipc_active_multi(const struct ipc_metadata *meta, const void *data, int *instance, int priority)
 {
-    portDISABLE_INTERRUPTS();
+    __disable_irq();
 
     orb_advert_t advert = NULL;
     
@@ -77,7 +77,7 @@ orb_advert_t ipc_active_multi(const struct ipc_metadata *meta, const void *data,
         ipc_data[serial][inst].authority_list = 0x00000000;
     }
 
-    portENABLE_INTERRUPTS();
+    __enable_irq();
     
     return advert;
 }
@@ -97,7 +97,7 @@ int ipc_subscibe_multi(const struct ipc_metadata *meta, unsigned instance)
     if(meta == NULL || meta->o_name == NULL)
         return 0;
     
-    portDISABLE_INTERRUPTS();
+    __disable_irq();
 
     uint16_t serial = meta->serial;
     
@@ -114,7 +114,7 @@ int ipc_subscibe_multi(const struct ipc_metadata *meta, unsigned instance)
         }
     }
     
-    portENABLE_INTERRUPTS();
+    __enable_irq();
 
     return ret;
 }
@@ -140,7 +140,7 @@ int ipc_unsubscibe(int handle)
 
 int ipc_push(const struct ipc_metadata *meta, orb_advert_t handle, const void *data)
 {  
-    portDISABLE_INTERRUPTS();
+    __disable_irq();
 
     uint16_t serial = meta->serial;
 
@@ -177,14 +177,14 @@ int ipc_push(const struct ipc_metadata *meta, orb_advert_t handle, const void *d
     //         Info_Debug("ipc post error\n");
     //     }
     // }
-    portENABLE_INTERRUPTS();
+    __enable_irq();
     
     return 1;
 }
 
 int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
 {
-    portDISABLE_INTERRUPTS();
+    __disable_irq();
 
     int ret = 0;
     uint16_t serial = meta->serial;
@@ -194,7 +194,7 @@ int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
         int instance = handle & ~0xFFFFFFF0;
         
         if(instance > 0 && !meta->multi) {
-            portENABLE_INTERRUPTS();
+            __enable_irq();
             return ret;
         }
 
@@ -205,7 +205,7 @@ int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
             memcpy(buffer, ipc_data[serial][instance].data, meta->o_size);
 
             ret = 1;
-            portENABLE_INTERRUPTS();
+            __enable_irq();
             return ret;
         }
         
@@ -235,7 +235,7 @@ int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
             }
         }
     }
-    portENABLE_INTERRUPTS();
+    __enable_irq();
     
     return ret;
 }
