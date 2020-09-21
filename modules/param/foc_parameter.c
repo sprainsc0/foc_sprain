@@ -3,7 +3,7 @@
 const struct bgc_parameters_t foc_parameters = {
     //    NAME             TYPE              VOLA            DEFAULT
     /* -------------------acc calibration parameter 12------------------- */
-    {"SAM_MODE",     PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 1 },
+    {"SAM_MODE",     PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
     {"DUTY_MAX",     PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.8f },
     
     {"ENC_TYPE",     PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },

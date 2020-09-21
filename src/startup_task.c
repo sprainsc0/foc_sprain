@@ -38,11 +38,10 @@ void startup_task(void *argument)
     
     module_func(notify_main,      "start");
     module_func(enc_main,         "start");
-    module_func(foc_main,         "start cali");
-
     module_func(shell_main,       "start");
     module_func(Commander_main,   "start");
     module_func(mavlink_main,     "start");
+    module_func(foc_main,         "start cali");
     
 	osThreadTerminate(startupHandle);
 }

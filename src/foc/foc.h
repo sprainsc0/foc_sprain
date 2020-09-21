@@ -16,7 +16,7 @@
 #include "topics/foc_status.h"
 #include "topics/foc_target.h"
 
-#define ADC_CURRENT_OHM		                  0.1f
+#define ADC_CURRENT_OHM		                  0.01f
 #define ADC_CURRENT_AMP		                  20.0f
 #define VREFINT                               1.2f
 #define VREF                                  3.3f

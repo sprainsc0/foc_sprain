@@ -5,6 +5,8 @@
 #include "debug.h"
 #include "foc.h"
 #include "tim.h"
+#include "gpio.h"
+#include "main.h"
 #include "../encoder/encoder.h"
 #include "foc_function.h"
 
@@ -16,7 +18,7 @@ static uint16_t adc_msic[3];
 const osThreadAttr_t foc_attributes = {
 		.name = "foc",
 		.priority = (osPriority_t)osPriorityRealtime2,
-		.stack_size = 512};
+		.stack_size = 1024};
 
 namespace MC_FOC {
 #pragma default_variable_attributes = @ ".ccram"
@@ -201,9 +203,14 @@ void FOC::run(void *parammeter)
 		_foc_m.temperature = 0;
 		_foc_m.ctrl_mode = _foc_ref.ctrl_mode;
 
-		float int_limited = (2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus;
-		_id_ctrl.imax(int_limited);
-		_iq_ctrl.imax(int_limited);
+		float intd_limited = (2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus;
+		float indd = _id_ctrl.get_integrator();
+
+		float indq_limited;
+        arm_sqrt_f32((intd_limited*intd_limited) - (indd*indd), &indq_limited);
+
+		_id_ctrl.imax(intd_limited);
+		_iq_ctrl.imax(indq_limited);
 
 		// push foc status
 		ipc_push(IPC_ID(foc_status), _foc_status_pub, &_foc_m);
@@ -241,6 +248,10 @@ void FOC::foc_process(void)
     float adc_value;
 
 	perf_count(foc_adc_int);
+
+	HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
+
+	const uint64_t ts = micros();
 
 	bool updated = false;
 	ipc_check(_foc_target_sub, &updated);

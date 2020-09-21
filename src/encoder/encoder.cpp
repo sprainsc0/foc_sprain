@@ -114,8 +114,9 @@ void Encoder::enc_process(void)
 
 	perf_begin(enc_tim_ela);
 
+	perf_count(enc_tim_int);
+
 	if ((_enc_cfg.type == ENC_ANGLE) && hal_amt222_read(&raw)) {
-		perf_count(enc_tim_int);
 
 		healthy = true;
 		// rad

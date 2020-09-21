@@ -63,21 +63,21 @@ perf_counter_t
 perf_alloc(enum perf_counter_type type, const char *name)
 {
 	perf_counter_t ctr = NULL;
-
+	__disable_irq();
 	switch (type) {
 	case PC_COUNT:
-		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_count));
-        // memset(ctr, 0, sizeof(struct perf_ctr_count));
+		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_count));
+        memset(ctr, 0, sizeof(struct perf_ctr_count));
 		break;
 
 	case PC_ELAPSED:
-		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_elapsed));
-        // memset(ctr, 0, sizeof(struct perf_ctr_elapsed));
+		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_elapsed));
+        memset(ctr, 0, sizeof(struct perf_ctr_elapsed));
 		break;
 
 	case PC_INTERVAL:
-		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_interval));
-        // memset(ctr, 0, sizeof(struct perf_ctr_interval));
+		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_interval));
+        memset(ctr, 0, sizeof(struct perf_ctr_interval));
 		break;
 
 	default:
@@ -89,7 +89,7 @@ perf_alloc(enum perf_counter_type type, const char *name)
 		ctr->name = name;
 		sq_addfirst(&ctr->link, &perf_counters);
 	}
-
+	__enable_irq();
 	return ctr;
 }
 
@@ -124,7 +124,7 @@ perf_free(perf_counter_t handle)
 	}
 
 	sq_rem(&handle->link, &perf_counters);
-	free(handle);
+	vPortFree(handle);
 }
 
 void
@@ -340,7 +340,7 @@ perf_reset(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-
+	__disable_irq();
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count = 0;
@@ -367,6 +367,7 @@ perf_reset(perf_counter_t handle)
 			break;
 		}
 	}
+	__enable_irq();
 }
 
 void
