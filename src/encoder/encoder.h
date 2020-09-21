@@ -26,6 +26,8 @@ public:
 
     void parameter_update(bool force);
 
+    struct encoder_s get_encoder(void) const { return _enc_data; }
+
 protected:
     osThreadId_t _handle;
 

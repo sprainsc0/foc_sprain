@@ -4,7 +4,7 @@
 
 void platform_init(void)
 {
-    HAL_TIM_Base_Start(&htim3);
+    HAL_TIM_Base_Start(&htim4);
 
 	hal_uart_init();
 

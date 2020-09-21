@@ -66,29 +66,27 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 void MavlinkReceiver::handle_message_heartbeat(mavlink_message_t *msg)
 {
 	/* telemetry status supported only on first TELEMETRY_STATUS_ORB_ID_NUM mavlink channels */
-	if (_mavlink->get_channel() < (mavlink_channel_t)IPC_MULTI_MAX_INSTANCES) {
-		mavlink_heartbeat_t hb;
-		mavlink_msg_heartbeat_decode(msg, &hb);
+    mavlink_heartbeat_t hb;
+    mavlink_msg_heartbeat_decode(msg, &hb);
 
-		/* ignore own heartbeats, accept only heartbeats from GCS */
-		if (msg->sysid != mavlink_system.sysid && hb.type == MAV_TYPE_GCS) {
+    /* ignore own heartbeats, accept only heartbeats from GCS */
+    if (msg->sysid != mavlink_system.sysid && hb.type == MAV_TYPE_GCS) {
 
-			struct telemetry_status_s &tstatus = _mavlink->get_rx_status();
+        struct telemetry_status_s &tstatus = _mavlink->get_rx_status();
 
-			/* set heartbeat time and topic time and publish -
-			 * the telem status also gets updated on telemetry events
-			 */
-			tstatus.timestamp = micros();
-			tstatus.heartbeat_time = tstatus.timestamp;
+        /* set heartbeat time and topic time and publish -
+         * the telem status also gets updated on telemetry events
+         */
+        tstatus.timestamp = micros();
+        tstatus.heartbeat_time = tstatus.timestamp;
 
-			if (_telemetry_status_pub == nullptr) {
-				_telemetry_status_pub = ipc_active(IPC_ID(telemetry_status), &tstatus);
+        if (_telemetry_status_pub == nullptr) {
+            _telemetry_status_pub = ipc_active(IPC_ID(telemetry_status), &tstatus);
 
-			} else {
-				ipc_push(IPC_ID(telemetry_status), _telemetry_status_pub, &tstatus);
-			}
-		}
-	}
+        } else {
+            ipc_push(IPC_ID(telemetry_status), _telemetry_status_pub, &tstatus);
+        }
+    }
 }
 
 /**

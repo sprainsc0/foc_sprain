@@ -61,7 +61,6 @@ void USB_LP_CAN_RX0_IRQHandler(void);
 void CAN_RX1_IRQHandler(void);
 void CAN_SCE_IRQHandler(void);
 void TIM2_IRQHandler(void);
-void SPI1_IRQHandler(void);
 void USART3_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 void DMA2_Channel1_IRQHandler(void);

@@ -25,20 +25,6 @@ struct ipc_metadata {
 typedef const struct ipc_metadata *ipc_id_t;
 
 /**
- * Maximum number of multi topic instances
- */
-#define IPC_MULTI_MAX_INSTANCES	 2// This must be < 10 (because it's the last char of the node path)
-
-/**
- * Topic priority.
- * Relevant for multi-topics / topic groups
- */
-enum IPC_PRIO {
-	IPC_PRIO_HIGH = 0,
-    IPC_PRIO_LOW = 1
-};
-
-/**
  * Generates a pointer to the uORB metadata structure for
  * a given topic.
  *

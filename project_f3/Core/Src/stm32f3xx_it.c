@@ -62,7 +62,6 @@ extern DMA_HandleTypeDef hdma_adc2;
 extern DMA_HandleTypeDef hdma_adc3;
 extern DMA_HandleTypeDef hdma_adc4;
 extern CAN_HandleTypeDef hcan;
-extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim2;
 extern DMA_HandleTypeDef hdma_usart3_rx;
 extern DMA_HandleTypeDef hdma_usart3_tx;
@@ -282,20 +281,6 @@ void TIM2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles SPI1 global interrupt.
-  */
-void SPI1_IRQHandler(void)
-{
-  /* USER CODE BEGIN SPI1_IRQn 0 */
-
-  /* USER CODE END SPI1_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi1);
-  /* USER CODE BEGIN SPI1_IRQn 1 */
-
-  /* USER CODE END SPI1_IRQn 1 */
-}
-
-/**
   * @brief This function handles USART3 global interrupt / USART3 wake-up interrupt through EXTI line 28.
   */
 void USART3_IRQHandler(void)
@@ -305,7 +290,7 @@ void USART3_IRQHandler(void)
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
-    hal_uart_irq();
+  hal_uart_irq();
   /* USER CODE END USART3_IRQn 1 */
 }
 

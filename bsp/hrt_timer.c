@@ -3,16 +3,16 @@
 
 uint64_t micros(void)
 {
-    uint64_t	abstime;
-    uint32_t	count;
+    volatile uint64_t	abstime;
+    volatile uint32_t	count;
 
     static volatile uint64_t base_time = 0;
     static volatile uint32_t last_count = 0;
 
-    count = TIM3->CNT;
+    count = TIM4->CNT;
 
     if (count < last_count) {
-        base_time += 0xffff;
+        base_time += TIM4->ARR;
     }
 
     /* save the count for next time */

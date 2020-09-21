@@ -4,6 +4,8 @@
 #include <platform.h>
 #include "debug.h"
 #include "foc.h"
+#include "tim.h"
+#include "../encoder/encoder.h"
 #include "foc_function.h"
 
 static uint16_t adc_current[3];
@@ -17,14 +19,23 @@ const osThreadAttr_t foc_attributes = {
 		.stack_size = 512};
 
 namespace MC_FOC {
-	static FOC *gFOC;
+#pragma default_variable_attributes = @ ".ccram"
+	static FOC gFOC;
+	static Encoder gEnc;
+#pragma default_variable_attributes =
+	
 }
 
 bool FOC::_power_state = false;
 
 static void ADC1_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    MC_FOC::gFOC->foc_process();
+    MC_FOC::gFOC.foc_process();
+}
+
+static void TIM2_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    MC_FOC::gEnc.enc_process();
 }
 
 static void foc_func(FOC *pThis)
@@ -51,7 +62,7 @@ FOC::~FOC(void)
 bool FOC::init(void)
 {
 	_params_sub     = ipc_subscibe(IPC_ID(parameter_update));
-	_encoder_sub    = ipc_subscibe(IPC_ID(encoder));
+	// _encoder_sub    = ipc_subscibe(IPC_ID(encoder));
 	_foc_target_sub = ipc_subscibe(IPC_ID(foc_target));
 	_foc_status_pub = ipc_active(IPC_ID(foc_status), &_foc_m);
 	_led_pub        = ipc_active(IPC_ID(actuator_notify), &_led_state);
@@ -71,6 +82,10 @@ bool FOC::init(void)
 	foc_task_ela = perf_alloc(PC_ELAPSED, "foc_ela");
 
 	HAL_ADC_RegisterCallback(&hadc1, HAL_ADC_CONVERSION_COMPLETE_CB_ID, ADC1_ConvCpltCallback);
+	HAL_TIM_RegisterCallback(&htim2, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM2_PeriodElapsedCallback);
+
+	// enc
+	HAL_TIM_Base_Start_IT(&htim2);
 
 	// motor
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -277,11 +292,12 @@ void FOC::foc_process(void)
         }
     }
 
-	updated = false;
-    ipc_check(_encoder_sub, &updated);
-    if(updated) {
-        ipc_pull(IPC_ID(encoder), _encoder_sub, &_encoder_data);
-    }
+	// updated = false;
+    // ipc_check(_encoder_sub, &updated);
+    // if(updated) {
+    //     ipc_pull(IPC_ID(encoder), _encoder_sub, &_encoder_data);
+    // }
+	_encoder_data = MC_FOC::gEnc.get_encoder();
 
 	// electric period
 	if(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) {
@@ -306,7 +322,7 @@ void FOC::foc_process(void)
 		error = _foc_ref.id_target - _foc_m.i_d;
 		_id_ctrl.set_input_filter_d(error);
 		integrator = _id_ctrl.get_integrator();
-		if (is_zero(integrator) || (is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
 			integrator = _id_ctrl.get_i();
 		}
 		_foc_m.v_d = _id_ctrl.get_p() + integrator + _id_ctrl.get_ff(_foc_ref.id_target);
@@ -314,7 +330,7 @@ void FOC::foc_process(void)
 		error = _foc_ref.iq_target - _foc_m.i_q;
 		_iq_ctrl.set_input_filter_d(error);
 		integrator = _iq_ctrl.get_integrator();
-		if (is_zero(integrator) || (is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
 			integrator = _iq_ctrl.get_i();
 		}
 		_foc_m.v_q = _iq_ctrl.get_p() + integrator + _iq_ctrl.get_ff(_foc_ref.iq_target);
@@ -493,28 +509,26 @@ int foc_main(int argc, char *argv[])
     
     for(int i=0; i<argc; i++) {
         if (!strcmp(argv[i], "start")) {
-			if (MC_FOC::gFOC != nullptr) {
-                Info_Debug("already running\n");
-                return 0;
-            }
-
-            MC_FOC::gFOC = new FOC();
-            
-
-            if (MC_FOC::gFOC == NULL) {
-                Info_Debug("alloc failed\n");
-                return 0;
-            }
-
-            MC_FOC::gFOC->init();
+            MC_FOC::gFOC.init();
         }
         
         if (!strcmp(argv[i], "cali")) {
-			if (MC_FOC::gFOC == NULL) {
-                Info_Debug("alloc failed\n");
-                return 0;
-            }
-            MC_FOC::gFOC->current_calibration();
+            MC_FOC::gFOC.current_calibration();
+        }
+    }
+    return 1;
+}
+
+int enc_main(int argc, char *argv[])
+{
+    if (argc < 1) {
+		Info_Debug("input argv error\n");
+		return 1;
+	}
+    
+    for(int i=0; i<argc; i++) {
+        if (!strcmp(argv[i], "start")) {
+            MC_FOC::gEnc.init();
         }
     }
     return 1;

@@ -183,7 +183,6 @@ int ipc_check(int handle, bool *updated)
     }
     
     int serial = (handle >> 24);
-    int instance = handle & ~0xFFFFFFF0;
     int sub_num = (handle >> 4) & ~0xFFFFFF00;
 
     if(ipc_data[serial]->buffer != nullptr) {
@@ -217,7 +216,6 @@ void ipc_init(void)
             
         ipc_data[i]->data = NULL;
         ipc_data[i]->buffer = NULL;
-        ipc_data[i]->priority = IPC_PRIO_HIGH;
         ipc_data[i]->serial = -1;
         ipc_data[i]->published = false;
         

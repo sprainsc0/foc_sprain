@@ -75,7 +75,7 @@ private:
 
     int _params_sub;
 
-    int _encoder_sub;
+    // int _encoder_sub;
     struct encoder_s _encoder_data;
 
     int _foc_target_sub;

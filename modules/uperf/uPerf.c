@@ -66,18 +66,18 @@ perf_alloc(enum perf_counter_type type, const char *name)
 
 	switch (type) {
 	case PC_COUNT:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_count));
-        memset(ctr, 0, sizeof(struct perf_ctr_count));
+		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_count));
+        // memset(ctr, 0, sizeof(struct perf_ctr_count));
 		break;
 
 	case PC_ELAPSED:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_elapsed));
-        memset(ctr, 0, sizeof(struct perf_ctr_elapsed));
+		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_elapsed));
+        // memset(ctr, 0, sizeof(struct perf_ctr_elapsed));
 		break;
 
 	case PC_INTERVAL:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_interval));
-        memset(ctr, 0, sizeof(struct perf_ctr_interval));
+		ctr = (perf_counter_t)calloc(1, sizeof(struct perf_ctr_interval));
+        // memset(ctr, 0, sizeof(struct perf_ctr_interval));
 		break;
 
 	default:
@@ -124,7 +124,7 @@ perf_free(perf_counter_t handle)
 	}
 
 	sq_rem(&handle->link, &perf_counters);
-	vPortFree(handle);
+	free(handle);
 }
 
 void

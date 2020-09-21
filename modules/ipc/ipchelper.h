@@ -7,12 +7,10 @@
 struct IPCType{
     uint8_t                             *data;
     ringbuffer::RingBuffer              *buffer;
-    IPC_PRIO                            priority;
     int                                 serial;
     bool                                published;
     uint32_t                            registered_list;
     uint32_t                            authority_list;
-//  OS_FLAG_GRP	                        *sem;
 };
 
 extern IPCType          *ipc_data[TOPICS_COUNT];

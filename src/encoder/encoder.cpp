@@ -1,24 +1,13 @@
-#include "tim.h"
 #include "hrt_timer.h"
 #include "debug.h"
 #include "encoder.h"
 #include "amt222.h"
 #include "utils.h"
-#include "foc_function.h"
 
 const osThreadAttr_t enc_attributes = {
 		.name = "enc",
 		.priority = (osPriority_t)osPriorityHigh,
 		.stack_size = 512};
-
-namespace MC_ENC {
-	static Encoder *gEnc;
-}
-
-static void TIM2_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    MC_ENC::gEnc->enc_process();
-}
 
 static void enc_func(Encoder *pThis)
 {
@@ -56,11 +45,6 @@ bool Encoder::init(void)
 	enc_task_ela = perf_alloc(PC_ELAPSED, "enc_ela");
 
 	enc_err_count = perf_alloc(PC_COUNT, "enc_err");
-
-	HAL_TIM_RegisterCallback(&htim2, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM2_PeriodElapsedCallback);
-
-	// enc
-	HAL_TIM_Base_Start_IT(&htim2);
 
 	_handle = osThreadNew((osThreadFunc_t)enc_func, this, &enc_attributes);
 
@@ -101,6 +85,9 @@ void Encoder::run(void *parammeter)
 		perf_begin(enc_task_ela);
 
 		perf_count(enc_task_int);
+
+		// push foc status
+		ipc_push(IPC_ID(encoder), _encoder_pub, &_enc_data);
 
 		parameter_update(false);
 		if(((ts - start_timr) > 250000) && !_enc_ready) {
@@ -162,36 +149,6 @@ void Encoder::enc_process(void)
 	_enc_data.angle     = raw_angle;
 	_enc_data.angle_e   = elec_angle;
 	_enc_data.angle_m   = mech_angle;
-	// push foc status
-	ipc_push(IPC_ID(encoder), _encoder_pub, &_enc_data);
 
 	perf_end(enc_tim_ela);
-}
-
-int enc_main(int argc, char *argv[])
-{
-    if (argc < 1) {
-		Info_Debug("input argv error\n");
-		return 1;
-	}
-    
-    for(int i=0; i<argc; i++) {
-        if (!strcmp(argv[i], "start")) {
-			if (MC_ENC::gEnc != nullptr) {
-                Info_Debug("already running\n");
-                return 0;
-            }
-
-            MC_ENC::gEnc = new Encoder();
-            
-
-            if (MC_ENC::gEnc == NULL) {
-                Info_Debug("alloc failed\n");
-                return 0;
-            }
-
-            MC_ENC::gEnc->init();
-        }
-    }
-    return 1;
 }
