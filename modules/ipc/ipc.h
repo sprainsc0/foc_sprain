@@ -18,9 +18,7 @@ struct ipc_metadata {
 	const char *o_name;		/**< unique object name */
 	const uint32_t o_size;		/**< object size */
     const uint16_t serial;
-    const bool multi;
     const bool buffer;
-    const bool sem;
     const uint8_t b_size;
 };
 
@@ -76,14 +74,12 @@ enum IPC_PRIO {
  * @param _size_no_padding	Struct size w/o padding at the end
  * @param _fields	All fields in a semicolon separated list e.g: "float[3] position;bool armed"
  */
-#define IPC_DEFINE(_name, _struct, _serial, _multi, _buffer, _sem, _size)		\
+#define IPC_DEFINE(_name, _struct, _serial, _buffer, _size)		\
 	const struct ipc_metadata __ipc_##_name = {	\
 		#_name,					\
 		sizeof(_struct), 		\
         _serial,                \
-        _multi,                 \
         _buffer,                \
-        _sem,                   \
         _size,                  \
 	}; struct hack
 
@@ -107,21 +103,15 @@ void ipc_init();
 
 orb_advert_t ipc_active(const struct ipc_metadata *meta, const void *data);
 
-extern orb_advert_t ipc_active_multi(const struct ipc_metadata *meta, const void *data, int *instance, int priority);
-
 void ipc_inactive(orb_advert_t handle);
 
 int	ipc_push(const struct ipc_metadata *meta, orb_advert_t handle, const void *data);
 
 int	ipc_subscibe(const struct ipc_metadata *meta);
 
-int	ipc_subscibe_multi(const struct ipc_metadata *meta, unsigned instance);
-
 int	ipc_unsubscibe(int handle);
 
 int	ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer);
-
-int ipc_wait(int handle, int timeout);
 
 int	ipc_check(int handle, bool *updated);
 

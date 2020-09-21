@@ -6,11 +6,10 @@
 
 #include "ipc.h"
 
-MavlinkOrbSubscription::MavlinkOrbSubscription(const ipc_id_t topic, int instance) :
+MavlinkOrbSubscription::MavlinkOrbSubscription(const ipc_id_t topic) :
 	next(nullptr),
 	_topic(topic),
 	_fd(-1),
-	_instance(instance),
 	_published(false),
 	_last_pub_check(0)
 {
@@ -27,12 +26,6 @@ ipc_id_t
 MavlinkOrbSubscription::get_topic() const
 {
 	return _topic;
-}
-
-int
-MavlinkOrbSubscription::get_instance() const
-{
-	return _instance;
 }
 
 bool
@@ -91,7 +84,7 @@ MavlinkOrbSubscription::is_published()
 	_last_pub_check = now;
 
 	if (_fd < 0) {
-		_fd = ipc_subscibe_multi(_topic, _instance);
+		_fd = ipc_subscibe(_topic);
 	}
 
 	bool updated = false;

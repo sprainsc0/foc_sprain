@@ -186,20 +186,20 @@ void Mavlink::send_bytes(const uint8_t *buf, unsigned packet_len)
 	}
 }
 
-MavlinkOrbSubscription *Mavlink::add_orb_subscription(const ipc_id_t topic, int instance)
+MavlinkOrbSubscription *Mavlink::add_orb_subscription(const ipc_id_t topic)
 {
 	/* check if already subscribed to this topic */
 	MavlinkOrbSubscription *sub;
 
 	LL_FOREACH(_subscriptions, sub) {
-		if (sub->get_topic() == topic && sub->get_instance() == instance) {
+		if (sub->get_topic() == topic) {
 			/* already subscribed */
 			return sub;
 		}
 	}
 
 	/* add new subscription */
-	MavlinkOrbSubscription *sub_new = new MavlinkOrbSubscription(topic, instance);
+	MavlinkOrbSubscription *sub_new = new MavlinkOrbSubscription(topic);
 
 	LL_APPEND(_subscriptions, sub_new);
 

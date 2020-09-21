@@ -40,7 +40,7 @@ public:
 	float           get_rate_mult();
     unsigned		get_main_loop_delay() const { return _main_loop_delay; }
 
-    MavlinkOrbSubscription *add_orb_subscription(const ipc_id_t topic, int instance = 0);
+    MavlinkOrbSubscription *add_orb_subscription(const ipc_id_t topic);
 
     unsigned		get_system_type() { return _system_type; }
 
