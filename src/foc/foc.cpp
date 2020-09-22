@@ -85,8 +85,8 @@ bool FOC::init(void)
 	_param_handles.motor_l_handle          = param_find("MOTOR_L");
 	_param_handles.flux_linkage_handle     = param_find("FLUX_LINKAGE");
 
-	gHfi.init();
-	gObser.init();
+    MC_FOC::gHfi.init();
+    MC_FOC::gObser.init();
 
 	foc_adc_int  = perf_alloc(PC_INTERVAL, "adc_int");
 	foc_task_int = perf_alloc(PC_INTERVAL, "foc_int");
@@ -323,11 +323,6 @@ void FOC::foc_process(void)
         }
     }
 
-	// updated = false;
-    // ipc_check(_encoder_sub, &updated);
-    // if(updated) {
-    //     ipc_pull(IPC_ID(encoder), _encoder_sub, &_encoder_data);
-    // }
 	_encoder_data = MC_FOC::gEnc.get_encoder();
 
 	// electric period
@@ -377,7 +372,7 @@ void FOC::foc_process(void)
 	_foc_m.mod_d = _foc_m.v_d / ((2.0 / 3.0) * _foc_m.vbus);
 	_foc_m.mod_q = _foc_m.v_q / ((2.0 / 3.0) * _foc_m.vbus);
 
-	_foc_m.duty = SIGN(_foc_m.v_q) * arm_sqrt_f32(SQ(_foc_m.mod_d) + SQ(_foc_m.mod_q)) / SQRT3_BY_2;
+	_foc_m.duty = SIGN(_foc_m.v_q) * sqrtf(SQ(_foc_m.mod_d) + SQ(_foc_m.mod_q)) / SQRT3_BY_2;
 
 	// re-park
 	float mod_alpha = c * _foc_m.mod_d - s * _foc_m.mod_q;

@@ -75,6 +75,24 @@ void Command::run(void *parameter)
                     enc_m->do_calibration();
                     delete enc_m;
                     exit_cali_mode();
+                } else if (_command.sub_cmd == 3) {
+                    enter_cali_mode();
+                    flux = new FLUX_Cal(_cal_status_pub);
+                    flux->do_calibration();
+                    delete flux;
+                    exit_cali_mode();
+                } else if (_command.sub_cmd == 4) {
+                    enter_cali_mode();
+                    ind = new IND_Cal(_cal_status_pub);
+                    ind->do_calibration();
+                    delete ind;
+                    exit_cali_mode();
+                } else if (_command.sub_cmd == 5) {
+                    enter_cali_mode();
+                    res = new RES_Cal(_cal_status_pub);
+                    res->do_calibration();
+                    delete res;
+                    exit_cali_mode();
                 }
                 break;
             }

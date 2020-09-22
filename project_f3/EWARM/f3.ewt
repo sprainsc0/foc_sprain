@@ -1575,7 +1575,16 @@
                 <name>$PROJ_DIR$\..\..\src\command\elec_calibration.cpp</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\..\src\command\fluxlinkage_detected.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\command\ind_detected.cpp</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\src\command\mech_calibration.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\command\res_detected.cpp</name>
             </file>
         </group>
         <group>

@@ -8,6 +8,9 @@
 
 #include "elec_calibration.h"
 #include "mech_calibration.h"
+#include "res_detected.h"
+#include "ind_detected.h"
+#include "fluxlinkage_detected.h"
 
 #include "topics/actuator_notify.h"
 #include "topics/parameter_update.h"
@@ -30,6 +33,9 @@ private:
 
     Enc_CalE *enc_e;
     Enc_CalM *enc_m;
+    FLUX_Cal *flux;
+    IND_Cal  *ind;
+    RES_Cal  *res;
 
     // command subscribe
     int _commander_sub;

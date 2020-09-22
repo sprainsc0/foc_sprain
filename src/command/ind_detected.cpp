@@ -1,4 +1,4 @@
-#include "res_detected.h"
+#include "ind_detected.h"
 #include "configure.h"
 #include "cmsis_os.h"
 #include "utils.h"
@@ -6,45 +6,47 @@
 #include <hrt_timer.h>
 #include <debug.h>
 
-RES_Cal::RES_Cal(orb_advert_t &cal_status_pub):
+IND_Cal::IND_Cal(orb_advert_t &cal_status_pub):
     _mavlink_cal_pub(cal_status_pub),
     foc_mode(0)
 {
-    _cal_params_handles.motor_res_handle = param_find("MOTOR_R");
+    _cal_params_handles.motor_ind_handle = param_find("MOTOR_L");
+    _cal_params_handles.ind_diff_handle  = param_find("MOTOR_L_DIFF");
 
     _params_sub     = ipc_subscibe(IPC_ID(parameter_update));
     _foc_status_sub = ipc_subscibe(IPC_ID(foc_status));
     _foc_ref_pub    = ipc_active(IPC_ID(foc_target), &_foc_ref);
 }
 
-RES_Cal::~RES_Cal()
+IND_Cal::~IND_Cal()
 {
     ipc_unsubscibe(_params_sub);
     ipc_inactive(_foc_ref_pub);
 }
 
-void RES_Cal::set_res_parameter(void)
+void IND_Cal::set_ind_parameter(void)
 {
-    param_set_no_notification(_cal_params_handles.motor_res_handle,   &_res_calibration.motor_res);
+    param_set_no_notification(_cal_params_handles.motor_ind_handle,   &_ind_calibration.motor_ind);
+    param_set_no_notification(_cal_params_handles.ind_diff_handle,    &_ind_calibration.ind_diff);
 
     param_notify_changes(PARAM_UPDATE_CALIBRATED_MOTOR);
 }
 
-void RES_Cal::send_status(uint8_t status)
+void IND_Cal::send_status(uint8_t status)
 {
     if(_mavlink_cal_pub == nullptr) {
         _mavlink_cal_pub = ipc_active(IPC_ID(calibrate_status), &_cal_status);
     }
-    _cal_status.calibrate_type = RES_CALIBRATING;
+    _cal_status.calibrate_type = IND_CALIBRATING;
 
     _cal_status.calibrate_statu = status;
     ipc_push(IPC_ID(calibrate_status), _mavlink_cal_pub, &_cal_status);
 }
 
-bool RES_Cal::do_calibration()
+bool IND_Cal::do_calibration()
 {
     bool updated = false;
-    Info_Debug("[motor]Resistance Detected Waiting FOC Status\n");
+    Info_Debug("[motor]Inductance Detected Waiting FOC Status\n");
     while (1) {
         ipc_check(_foc_status_sub, &updated);
         if(updated) {
@@ -54,9 +56,9 @@ bool RES_Cal::do_calibration()
             break;
         }
     }
-    Info_Debug("[motor]Resistance Detected start\n");
+    Info_Debug("[motor]Inductance Detected start\n");
 
-    send_status(RES_CALIBRATE_STARTED);
+    send_status(IND_CALIBRATE_STARTED);
     
     _foc_ref.ctrl_mode = MC_CTRL_IDLE;
     _foc_ref.id_target = 0;
@@ -70,11 +72,11 @@ bool RES_Cal::do_calibration()
 
     
 
-    set_res_parameter();
+    set_ind_parameter();
 
-    send_status(RES_CALIBRATE_SUCCESS);
+    send_status(IND_CALIBRATE_SUCCESS);
 
-    Info_Debug("[motor]Resistance Detected Success\n");
+    Info_Debug("[motor]Inductance Detected Success\n");
     
     return true;
 }
