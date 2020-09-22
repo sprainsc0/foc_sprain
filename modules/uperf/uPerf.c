@@ -188,13 +188,15 @@ perf_count(perf_counter_t handle)
 	taskEXIT_CRITICAL();
 }
 
-void
+float
 perf_count_isr(perf_counter_t handle)
 {
 	if (handle == NULL) {
-		return;
+		return 0.0f;
 	}
     int ret = taskENTER_CRITICAL_FROM_ISR();
+	volatile float dt = 0.0f;
+
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count++;
@@ -229,7 +231,7 @@ perf_count_isr(perf_counter_t handle)
 
 					// maintain mean and variance of interval in seconds
 					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					const float dt = interval / 1e6f;
+					dt = interval / 1e6f;
 					const float delta_intvl = dt - pci->mean;
 					pci->mean += delta_intvl / pci->event_count;
 					pci->M2 += delta_intvl * (dt - pci->mean);
@@ -246,6 +248,7 @@ perf_count_isr(perf_counter_t handle)
 		break;
 	}
 	taskEXIT_CRITICAL_FROM_ISR(ret);
+	return dt;
 }
 
 void

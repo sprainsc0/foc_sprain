@@ -25,6 +25,13 @@ struct bgc_parameters_t {
     const struct param_info_s __param__CURR_Q_P;
     const struct param_info_s __param__CURR_Q_I;
 
+    const struct param_info_s __param__SENSOR_TYPE;
+    const struct param_info_s __param__DECOUPLING;
+    const struct param_info_s __param__MOTOR_R;
+    const struct param_info_s __param__MOTOR_L;
+    const struct param_info_s __param__MOTOR_L_DIFF;
+    const struct param_info_s __param__FLUX_LINKAGE;
+
 	const unsigned int param_count;
 };
 

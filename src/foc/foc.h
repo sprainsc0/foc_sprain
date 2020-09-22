@@ -24,7 +24,7 @@
 #define RESISTANCE1                           30.0f  // 30K
 #define RESISTANCE2                           3.3f   // 3.3K
 
-#define CURRENT_RATE_DT                       0.0001f
+#define CURRENT_RATE_DT                       0.00008f
 
 class FOC
 {
@@ -58,6 +58,12 @@ private:
         float curr_d_i;
         float curr_q_p;
         float curr_q_i;
+
+        int   sensor_type;
+        int   decoupling_type;
+        float motor_r;
+        float motor_l;
+        float flux_linkage;
     } _mc_cfg;
 
     struct {
@@ -68,6 +74,12 @@ private:
         param_t curr_d_i_handle;
         param_t curr_q_p_handle;
         param_t curr_q_i_handle;
+
+        param_t sensor_type_handle;
+        param_t decoupling_type_handle;
+        param_t motor_r_handle;
+        param_t motor_l_handle;
+        param_t flux_linkage_handle;
     } _param_handles;
 
     // 参考电压

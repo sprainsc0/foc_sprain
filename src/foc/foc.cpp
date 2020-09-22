@@ -28,7 +28,6 @@ namespace MC_FOC {
 	static HFI     gHfi;
 	static Observe gObser;
 #pragma default_variable_attributes =
-	
 }
 
 bool FOC::_power_state = false;
@@ -79,6 +78,15 @@ bool FOC::init(void)
 	_param_handles.curr_d_i_handle         = param_find("CURR_D_I");
 	_param_handles.curr_q_p_handle         = param_find("CURR_Q_P");
 	_param_handles.curr_q_i_handle         = param_find("CURR_Q_I");
+
+	_param_handles.sensor_type_handle      = param_find("SENSOR_TYPE");
+	_param_handles.decoupling_type_handle  = param_find("DECOUPLING");
+	_param_handles.motor_r_handle          = param_find("MOTOR_R");
+	_param_handles.motor_l_handle          = param_find("MOTOR_L");
+	_param_handles.flux_linkage_handle     = param_find("FLUX_LINKAGE");
+
+	gHfi.init();
+	gObser.init();
 
 	foc_adc_int  = perf_alloc(PC_INTERVAL, "adc_int");
 	foc_task_int = perf_alloc(PC_INTERVAL, "foc_int");
@@ -177,6 +185,12 @@ void FOC::parameter_update(bool force)
 		param_get(_param_handles.curr_q_p_handle,         &_mc_cfg.curr_q_p);
 		param_get(_param_handles.curr_q_i_handle,         &_mc_cfg.curr_q_i);
 
+		param_get(_param_handles.sensor_type_handle,      &_mc_cfg.sensor_type);
+		param_get(_param_handles.decoupling_type_handle,  &_mc_cfg.decoupling_type);
+		param_get(_param_handles.motor_r_handle,          &_mc_cfg.motor_r);
+		param_get(_param_handles.motor_l_handle,          &_mc_cfg.motor_l);
+		param_get(_param_handles.flux_linkage_handle,     &_mc_cfg.flux_linkage);
+
 		_id_ctrl.kP(_mc_cfg.curr_d_p);
 		_id_ctrl.kI(_mc_cfg.curr_d_i);
 		_iq_ctrl.kP(_mc_cfg.curr_q_p);
@@ -250,11 +264,11 @@ void FOC::foc_process(void)
 
     float adc_value;
 
-	perf_count_isr(foc_adc_int);
-
-	HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
-
 	const uint64_t ts = micros();
+
+	const float dt = perf_count_isr(foc_adc_int);
+
+	// HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
 
 	bool updated = false;
 	ipc_check_isr(_foc_target_sub, &updated);
@@ -274,6 +288,9 @@ void FOC::foc_process(void)
 	}
 
     perf_begin_isr(foc_adc_ela);
+
+	_id_ctrl.set_dt(dt);
+	_iq_ctrl.set_dt(dt);
 
 	// get current date
 	for (uint16_t i = 0; i < 3; i++)
@@ -360,15 +377,17 @@ void FOC::foc_process(void)
 	_foc_m.mod_d = _foc_m.v_d / ((2.0 / 3.0) * _foc_m.vbus);
 	_foc_m.mod_q = _foc_m.v_q / ((2.0 / 3.0) * _foc_m.vbus);
 
+	_foc_m.duty = SIGN(_foc_m.v_q) * arm_sqrt_f32(SQ(_foc_m.mod_d) + SQ(_foc_m.mod_q)) / SQRT3_BY_2;
+
 	// re-park
 	float mod_alpha = c * _foc_m.mod_d - s * _foc_m.mod_q;
 	float mod_beta  = c * _foc_m.mod_q + s * _foc_m.mod_d;
 
 	// svpwm
 	top = TIM1->ARR;
-	svm(-mod_alpha, -mod_beta, top, &_foc_m.duty[0], &_foc_m.duty[1], &_foc_m.duty[2], &_foc_m.svm_sector);
+	svm(-mod_alpha, -mod_beta, top, &_foc_m.pwm[0], &_foc_m.pwm[1], &_foc_m.pwm[2], &_foc_m.svm_sector);
 	
-	hal_pwm_duty_write(_foc_m.duty[0], _foc_m.duty[1], _foc_m.duty[2]);
+	hal_pwm_duty_write(_foc_m.pwm[0], _foc_m.pwm[1], _foc_m.pwm[2]);
 	
 	if(!_power_state) {
 		pwm_output_on();

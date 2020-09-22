@@ -18,6 +18,13 @@ const struct bgc_parameters_t foc_parameters = {
     {"CURR_Q_P", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 17.0f },
     {"CURR_Q_I", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 4.0f },
 
+    {"SENSOR_TYPE",   PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
+    {"DECOUPLING",    PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
+    {"MOTOR_R",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+    {"MOTOR_L",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+    {"MOTOR_L_DIFF",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+    {"FLUX_LINKAGE",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+
     // parameter count
-    12
+    18
 };

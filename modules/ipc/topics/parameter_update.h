@@ -6,6 +6,7 @@
 #define PARAM_UPDATE_CALIBRATED_ALL            0
 #define PARAM_UPDATE_CALIBRATED_EANG           1
 #define PARAM_UPDATE_CALIBRATED_MANG           2
+#define PARAM_UPDATE_CALIBRATED_RES            3
 
 struct parameter_update_s {
 	uint64_t timestamp; // required for logger

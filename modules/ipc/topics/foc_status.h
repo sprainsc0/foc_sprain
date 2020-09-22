@@ -20,9 +20,10 @@ struct foc_status_s {
 	float v_phase[3];
 	float v_alpha;
 	float v_beta;
-	uint32_t duty[3];
+	uint32_t pwm[3];
 	float temperature;
 	float vbus;
+	float duty;
 };
 
 /* register this as object request broker structure */

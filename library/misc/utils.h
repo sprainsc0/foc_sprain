@@ -15,6 +15,10 @@ extern "C"
 #define DEG_TO_RAD(angleDegrees) 	((angleDegrees)*M_PI / 180.0f)
 #define RAD_TO_DEG(angleRadians) 	((angleRadians)*180.0f / M_PI)
 
+#define SIGN(x)				((x < 0) ? -1 : 1)
+
+#define SQ(x)				((x) * (x))
+
 bool is_zero(const float fVal1);
 bool is_positive(const float fVal1);
 bool is_negative(const float fVal1);
