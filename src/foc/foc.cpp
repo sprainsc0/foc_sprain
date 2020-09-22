@@ -4,8 +4,9 @@
 #include <platform.h>
 #include "debug.h"
 #include "foc.h"
+#include "hfi.h"
+#include "observe.h"
 #include "tim.h"
-#include "gpio.h"
 #include "main.h"
 #include "../encoder/encoder.h"
 #include "foc_function.h"
@@ -22,8 +23,10 @@ const osThreadAttr_t foc_attributes = {
 
 namespace MC_FOC {
 #pragma default_variable_attributes = @ ".ccram"
-	static FOC gFOC;
+	static FOC     gFOC;
 	static Encoder gEnc;
+	static HFI     gHfi;
+	static Observe gObser;
 #pragma default_variable_attributes =
 	
 }

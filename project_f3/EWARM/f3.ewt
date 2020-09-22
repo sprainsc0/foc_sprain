@@ -1589,6 +1589,12 @@
             <file>
                 <name>$PROJ_DIR$\..\..\src\foc\foc.cpp</name>
             </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\foc\hfi.cpp</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\foc\observe.cpp</name>
+            </file>
         </group>
         <group>
             <name>notify</name>
