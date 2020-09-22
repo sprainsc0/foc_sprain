@@ -7,6 +7,7 @@
 #include "hrt_timer.h"
 #include "debug.h"
 #include "cmsis_os.h"
+#include "task.h"
 
 /**
  * Header common to all counters.
@@ -63,7 +64,7 @@ perf_counter_t
 perf_alloc(enum perf_counter_type type, const char *name)
 {
 	perf_counter_t ctr = NULL;
-	__disable_irq();
+	taskENTER_CRITICAL();
 	switch (type) {
 	case PC_COUNT:
 		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_count));
@@ -89,7 +90,7 @@ perf_alloc(enum perf_counter_type type, const char *name)
 		ctr->name = name;
 		sq_addfirst(&ctr->link, &perf_counters);
 	}
-	__enable_irq();
+	taskEXIT_CRITICAL();
 	return ctr;
 }
 
@@ -133,8 +134,7 @@ perf_count(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-    
-    __disable_irq();
+    taskENTER_CRITICAL();
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count++;
@@ -185,7 +185,67 @@ perf_count(perf_counter_t handle)
 	default:
 		break;
 	}
-    __enable_irq();
+	taskEXIT_CRITICAL();
+}
+
+void
+perf_count_isr(perf_counter_t handle)
+{
+	if (handle == NULL) {
+		return;
+	}
+    int ret = taskENTER_CRITICAL_FROM_ISR();
+	switch (handle->type) {
+	case PC_COUNT:
+		((struct perf_ctr_count *)handle)->event_count++;
+		break;
+
+	case PC_INTERVAL: {
+			struct perf_ctr_interval *pci = (struct perf_ctr_interval *)handle;
+			const uint64_t now = micros();
+
+			switch (pci->event_count) {
+			case 0:
+				pci->time_first = now;
+				break;
+
+			case 1:
+				pci->time_least = (uint32_t)(now - pci->time_last);
+				pci->time_most = (uint32_t)(now - pci->time_last);
+				pci->mean = pci->time_least / 1e6f;
+				pci->M2 = 0;
+				break;
+
+			default: {
+					const uint64_t interval = now - pci->time_last;
+
+					if ((uint32_t)interval < pci->time_least) {
+						pci->time_least = (uint32_t)interval;
+					}
+
+					if ((uint32_t)interval > pci->time_most) {
+						pci->time_most = (uint32_t)interval;
+					}
+
+					// maintain mean and variance of interval in seconds
+					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
+					const float dt = interval / 1e6f;
+					const float delta_intvl = dt - pci->mean;
+					pci->mean += delta_intvl / pci->event_count;
+					pci->M2 += delta_intvl * (dt - pci->mean);
+					break;
+				}
+			}
+
+			pci->time_last = now;
+			pci->event_count++;
+			break;
+		}
+
+	default:
+		break;
+	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 void
@@ -194,7 +254,7 @@ perf_begin(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-    __disable_irq();
+	taskENTER_CRITICAL();
 	switch (handle->type) {
 	case PC_ELAPSED:
 		((struct perf_ctr_elapsed *)handle)->time_start = micros();
@@ -203,7 +263,25 @@ perf_begin(perf_counter_t handle)
 	default:
 		break;
 	}
-    __enable_irq();
+	taskEXIT_CRITICAL();
+}
+
+void
+perf_begin_isr(perf_counter_t handle)
+{
+	if (handle == NULL) {
+		return;
+	}
+	int ret = taskENTER_CRITICAL_FROM_ISR();
+	switch (handle->type) {
+	case PC_ELAPSED:
+		((struct perf_ctr_elapsed *)handle)->time_start = micros();
+		break;
+
+	default:
+		break;
+	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 void
@@ -212,7 +290,7 @@ perf_end(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-    __disable_irq();
+	taskENTER_CRITICAL();
 	switch (handle->type) {
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
@@ -249,7 +327,53 @@ perf_end(perf_counter_t handle)
 	default:
 		break;
 	}
-    __enable_irq();
+	taskEXIT_CRITICAL();
+}
+
+void
+perf_end_isr(perf_counter_t handle)
+{
+	if (handle == NULL) {
+		return;
+	}
+	int ret = taskENTER_CRITICAL_FROM_ISR();
+	switch (handle->type) {
+	case PC_ELAPSED: {
+			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
+
+			if (pce->time_start != 0) {
+				int64_t elapsed = micros() - pce->time_start;
+
+				if (elapsed >= 0) {
+
+					pce->event_count++;
+					pce->time_total += elapsed;
+
+					if ((pce->time_least > (uint32_t)elapsed) || (pce->time_least == 0)) {
+						pce->time_least = elapsed;
+					}
+
+					if (pce->time_most < (uint32_t)elapsed) {
+						pce->time_most = elapsed;
+					}
+
+					// maintain mean and variance of the elapsed time in seconds
+					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
+					float dt = elapsed / 1e6f;
+					float delta_intvl = dt - pce->mean;
+					pce->mean += delta_intvl / pce->event_count;
+					pce->M2 += delta_intvl * (dt - pce->mean);
+
+					pce->time_start = 0;
+				}
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 void
@@ -340,7 +464,6 @@ perf_reset(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
-	__disable_irq();
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count = 0;
@@ -367,7 +490,6 @@ perf_reset(perf_counter_t handle)
 			break;
 		}
 	}
-	__enable_irq();
 }
 
 void

@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "cmsis_os.h"
+#include "task.h"
 #include "hrt_timer.h"
 #include "debug.h"
 
@@ -16,7 +17,7 @@ static IPCType        *ipc_data[TOPICS_COUNT];
 
 orb_advert_t ipc_active(const struct ipc_metadata *meta, const void *data)
 {
-    __disable_irq();
+    taskENTER_CRITICAL();
 
     orb_advert_t advert = NULL;
     
@@ -50,7 +51,7 @@ orb_advert_t ipc_active(const struct ipc_metadata *meta, const void *data)
     ipc_data[serial]->authority_list = 0x00000000;
     
 
-    __enable_irq();
+    taskEXIT_CRITICAL();
     
     return advert;
 }
@@ -65,7 +66,7 @@ int ipc_subscibe(const struct ipc_metadata *meta)
     if(meta == NULL || meta->o_name == NULL)
         return 0;
     
-    __disable_irq();
+    taskENTER_CRITICAL();
 
     uint16_t serial = meta->serial;
     
@@ -79,7 +80,7 @@ int ipc_subscibe(const struct ipc_metadata *meta)
         }
     }
     
-    __enable_irq();
+    taskEXIT_CRITICAL();
 
     return ret;
 }
@@ -100,7 +101,7 @@ int ipc_unsubscibe(int handle)
 
 int ipc_push(const struct ipc_metadata *meta, orb_advert_t handle, const void *data)
 {  
-    __disable_irq();
+    taskENTER_CRITICAL();
 
     uint16_t serial = meta->serial;
 
@@ -120,14 +121,41 @@ int ipc_push(const struct ipc_metadata *meta, orb_advert_t handle, const void *d
     
     ipc_data[serial]->authority_list = 0x00000000;
     
-    __enable_irq();
+    taskEXIT_CRITICAL();
+    
+    return 1;
+}
+
+int ipc_push_isr(const struct ipc_metadata *meta, orb_advert_t handle, const void *data)
+{  
+    int res = taskENTER_CRITICAL_FROM_ISR();
+
+    uint16_t serial = meta->serial;
+
+    if(ipc_data[serial]->buffer != NULL && meta->buffer) {
+        if(!ipc_data[serial]->buffer->full()) {
+            ipc_data[serial]->buffer->put(data, meta->o_size);
+        }
+    }
+
+    ipc_data[serial]->published = false;
+
+    memcpy(ipc_data[serial]->data, data, meta->o_size);
+
+    ipc_data[serial]->serial = serial;
+    
+    ipc_data[serial]->published = true;
+    
+    ipc_data[serial]->authority_list = 0x00000000;
+    
+    taskEXIT_CRITICAL_FROM_ISR(res);
     
     return 1;
 }
 
 int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
 {
-    __disable_irq();
+    taskENTER_CRITICAL();
 
     int ret = 0;
     uint16_t serial = meta->serial;
@@ -142,7 +170,7 @@ int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
             memcpy(buffer, ipc_data[serial]->data, meta->o_size);
 
             ret = 1;
-            __enable_irq();
+            taskEXIT_CRITICAL();
             return ret;
         }
         
@@ -170,7 +198,57 @@ int ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer)
             }
         }
     }
-    __enable_irq();
+    taskEXIT_CRITICAL();
+    
+    return ret;
+}
+
+int ipc_pull_isr(const struct ipc_metadata *meta, int handle, void *buffer)
+{
+    int res = taskENTER_CRITICAL_FROM_ISR();
+
+    int ret = 0;
+    uint16_t serial = meta->serial;
+    int sub_num = (handle >> 4) & ~0xFFFFFF00;
+
+    if(serial == (handle >> 24)) {
+
+        if(ipc_data[serial]->buffer != NULL && meta->buffer && !ipc_data[serial]->buffer->empty()) {
+
+            ipc_data[serial]->buffer->get(ipc_data[serial]->data, meta->o_size);
+            
+            memcpy(buffer, ipc_data[serial]->data, meta->o_size);
+
+            ret = 1;
+            taskEXIT_CRITICAL_FROM_ISR(res);
+            return ret;
+        }
+        
+        if(ipc_data[serial]->data != NULL) 
+        {
+            bool authorised = false;
+                
+            if(ipc_data[serial]->authority_list & (1<<sub_num)) {
+                authorised = true;
+            }
+
+            if(!(ipc_data[serial]->authority_list & (1<<sub_num))) {
+                ipc_data[serial]->authority_list |= (1<<sub_num);
+                authorised = true;
+            }
+            
+            ret = 1;
+
+            if(authorised) {
+                memcpy(buffer, ipc_data[serial]->data, meta->o_size);
+            }
+            
+            if(ipc_data[serial]->authority_list >= ipc_data[serial]->registered_list) {
+                ipc_data[serial]->published = false;
+            }
+        }
+    }
+    taskEXIT_CRITICAL_FROM_ISR(res);
     
     return ret;
 }
@@ -181,7 +259,9 @@ int ipc_check(int handle, bool *updated)
         *updated = false;
         return 0;
     }
-    
+
+    taskENTER_CRITICAL();
+
     int serial = (handle >> 24);
     int sub_num = (handle >> 4) & ~0xFFFFFF00;
 
@@ -191,6 +271,8 @@ int ipc_check(int handle, bool *updated)
         } else {
             *updated = false;
         }
+
+        taskEXIT_CRITICAL();
         return 1;
     }
 
@@ -205,6 +287,48 @@ int ipc_check(int handle, bool *updated)
     } else {
         *updated = false;
     }
+
+    taskEXIT_CRITICAL();
+    
+    return 1;
+}
+
+int ipc_check_isr(int handle, bool *updated)
+{
+    if(handle < 0) {
+        *updated = false;
+        return 0;
+    }
+    
+    int ret = taskENTER_CRITICAL_FROM_ISR();
+
+    int serial = (handle >> 24);
+    int sub_num = (handle >> 4) & ~0xFFFFFF00;
+
+    if(ipc_data[serial]->buffer != nullptr) {
+        if(!ipc_data[serial]->buffer->empty()) {
+            *updated = true;
+        } else {
+            *updated = false;
+        }
+
+        taskEXIT_CRITICAL_FROM_ISR(ret);
+        return 1;
+    }
+
+    bool authorised = false;
+
+    if(ipc_data[serial]->authority_list & (1<<sub_num)) {
+        authorised = true;
+    }
+    
+    if(ipc_data[serial]->published && !authorised) {
+        *updated = true;
+    } else {
+        *updated = false;
+    }
+
+    taskEXIT_CRITICAL_FROM_ISR(ret);
     
     return 1;
 }

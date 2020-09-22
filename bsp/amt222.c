@@ -19,15 +19,11 @@ bool hal_amt222_read(uint32_t *raw)
     value_tx[0] = 0x00;
     value_tx[1] = 0x00;
     
-    //__disable_irq();
 	en(true);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[0], (uint8_t *)&value_rx[0], 1, 1);
-    //while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
 	hal_delay_us(2);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[1], (uint8_t *)&value_rx[1], 1, 1);
-    //while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
 	en(false);
-    //__enable_irq();
 
 	angle = (value_rx[0] & 0x3F) << 8;
 	angle |= (value_rx[1] & 0xFF);
@@ -66,7 +62,6 @@ void hal_amt222_reset(void)
     value_tx[0] = 0x00;
     value_tx[1] = 0x60;
     
-    __disable_irq();
 	en(true);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[0], (uint8_t *)&value_rx[0], 1, 1);
     while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
@@ -74,5 +69,4 @@ void hal_amt222_reset(void)
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[1], (uint8_t *)&value_rx[1], 1, 1);
     while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
 	en(false);
-    __enable_irq();
 }

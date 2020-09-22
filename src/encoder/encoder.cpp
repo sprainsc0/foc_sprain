@@ -112,9 +112,9 @@ void Encoder::enc_process(void)
 		return;
 	}
 
-	perf_begin(enc_tim_ela);
+	perf_begin_isr(enc_tim_ela);
 
-	perf_count(enc_tim_int);
+	perf_count_isr(enc_tim_int);
 
 	if ((_enc_cfg.type == ENC_ANGLE) && hal_amt222_read(&raw)) {
 
@@ -141,7 +141,7 @@ void Encoder::enc_process(void)
 	} else if (_enc_cfg.type == ENC_ABZ) {
 		/* code */
 	} else {
-		perf_count(enc_err_count);
+		perf_count_isr(enc_err_count);
 	}
 
 	_enc_data.timestamp = micros();
@@ -151,5 +151,5 @@ void Encoder::enc_process(void)
 	_enc_data.angle_e   = elec_angle;
 	_enc_data.angle_m   = mech_angle;
 
-	perf_end(enc_tim_ela);
+	perf_end_isr(enc_tim_ela);
 }

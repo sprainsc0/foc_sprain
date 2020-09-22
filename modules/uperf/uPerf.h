@@ -54,6 +54,7 @@ extern void		perf_free(perf_counter_t handle);
  * @param handle		The handle returned from perf_alloc.
  */
 extern void		perf_count(perf_counter_t handle);
+extern void		perf_count_isr(perf_counter_t handle);
 
 /**
  * Begin a performance event.
@@ -63,6 +64,7 @@ extern void		perf_count(perf_counter_t handle);
  * @param handle		The handle returned from perf_alloc.
  */
 extern void		perf_begin(perf_counter_t handle);
+extern void		perf_begin_isr(perf_counter_t handle);
 
 /**
  * End a performance event.
@@ -74,6 +76,7 @@ extern void		perf_begin(perf_counter_t handle);
  * @param handle		The handle returned from perf_alloc.
  */
 extern void		perf_end(perf_counter_t handle);
+extern void		perf_end_isr(perf_counter_t handle);
 
 /**
  * Register a measurement

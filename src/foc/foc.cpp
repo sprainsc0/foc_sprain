@@ -247,16 +247,16 @@ void FOC::foc_process(void)
 
     float adc_value;
 
-	perf_count(foc_adc_int);
+	perf_count_isr(foc_adc_int);
 
 	HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
 
 	const uint64_t ts = micros();
 
 	bool updated = false;
-	ipc_check(_foc_target_sub, &updated);
+	ipc_check_isr(_foc_target_sub, &updated);
     if(updated) {
-        ipc_pull(IPC_ID(foc_target), _foc_target_sub, &_foc_ref);
+        ipc_pull_isr(IPC_ID(foc_target), _foc_target_sub, &_foc_ref);
     }
 	
 	// wait until foc task ready
@@ -270,7 +270,7 @@ void FOC::foc_process(void)
 		return;
 	}
 
-    perf_begin(foc_adc_ela);
+    perf_begin_isr(foc_adc_ela);
 
 	// get current date
 	for (uint16_t i = 0; i < 3; i++)
@@ -372,7 +372,7 @@ void FOC::foc_process(void)
 		_power_state = true;
 	}
 
-	perf_end(foc_adc_ela);
+	perf_end_isr(foc_adc_ela);
 }
 
 // Magnitude must not be larger than sqrt(3)/2, or 0.866

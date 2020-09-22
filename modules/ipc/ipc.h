@@ -101,6 +101,12 @@ int	ipc_pull(const struct ipc_metadata *meta, int handle, void *buffer);
 
 int	ipc_check(int handle, bool *updated);
 
+int	ipc_push_isr(const struct ipc_metadata *meta, orb_advert_t handle, const void *data);
+
+int	ipc_pull_isr(const struct ipc_metadata *meta, int handle, void *buffer);
+
+int	ipc_check_isr(int handle, bool *updated);
+
 #ifdef __cplusplus
 }
 #endif
