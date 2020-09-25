@@ -323,13 +323,24 @@ void FOC::foc_process(void)
         }
     }
 
-	_encoder_data = MC_FOC::gEnc.get_encoder();
+	
+
+	switch(_mc_cfg.sensor_type) {
+	case MC_SENSOR_ENC:
+	case MC_SENSOR_HAL:
+		_encoder_data = MC_FOC::gEnc.get_encoder();
+		_foc_m.phase_rad = _encoder_data.angle_e;
+		break;
+	case MC_SENSOR_HFI:
+		break;
+	case MC_SENSORLESS:
+	default:
+		break;
+	}
 
 	// electric period
 	if(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) {
 		_foc_m.phase_rad = wrap_2PI(_foc_ref.phase_override);
-	} else {
-		_foc_m.phase_rad = _encoder_data.angle_e;
 	}
 
 	s = arm_sin_f32(_foc_m.phase_rad);

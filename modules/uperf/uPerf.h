@@ -53,7 +53,7 @@ extern void		perf_free(perf_counter_t handle);
  *
  * @param handle		The handle returned from perf_alloc.
  */
-extern void		perf_count(perf_counter_t handle);
+extern float    perf_count(perf_counter_t handle);
 extern float    perf_count_isr(perf_counter_t handle);
 
 /**

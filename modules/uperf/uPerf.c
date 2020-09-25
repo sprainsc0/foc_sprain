@@ -124,17 +124,22 @@ perf_free(perf_counter_t handle)
 		return;
 	}
 
+	taskENTER_CRITICAL();
 	sq_rem(&handle->link, &perf_counters);
 	vPortFree(handle);
+	taskEXIT_CRITICAL();
 }
 
-void
+float
 perf_count(perf_counter_t handle)
 {
 	if (handle == NULL) {
 		return;
 	}
+
     taskENTER_CRITICAL();
+	volatile float dt = 0.0f;
+
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count++;
@@ -169,7 +174,7 @@ perf_count(perf_counter_t handle)
 
 					// maintain mean and variance of interval in seconds
 					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					const float dt = interval / 1e6f;
+					dt = interval / 1e6f;
 					const float delta_intvl = dt - pci->mean;
 					pci->mean += delta_intvl / pci->event_count;
 					pci->M2 += delta_intvl * (dt - pci->mean);
@@ -186,6 +191,7 @@ perf_count(perf_counter_t handle)
 		break;
 	}
 	taskEXIT_CRITICAL();
+	return dt;
 }
 
 float
@@ -386,6 +392,7 @@ perf_set_elapsed(perf_counter_t handle, int64_t elapsed)
 		return;
 	}
 
+	int ret = taskENTER_CRITICAL_FROM_ISR();
 	switch (handle->type) {
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
@@ -418,6 +425,7 @@ perf_set_elapsed(perf_counter_t handle, int64_t elapsed)
 	default:
 		break;
 	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 void
@@ -427,6 +435,7 @@ perf_set_count(perf_counter_t handle, uint64_t count)
 		return;
 	}
 
+	taskENTER_CRITICAL();
 	switch (handle->type) {
 	case PC_COUNT: {
 			((struct perf_ctr_count *)handle)->event_count = count;
@@ -436,7 +445,7 @@ perf_set_count(perf_counter_t handle, uint64_t count)
 	default:
 		break;
 	}
-
+	taskEXIT_CRITICAL();
 }
 
 void
@@ -446,6 +455,7 @@ perf_cancel(perf_counter_t handle)
 		return;
 	}
 
+	taskENTER_CRITICAL();
 	switch (handle->type) {
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
@@ -457,6 +467,7 @@ perf_cancel(perf_counter_t handle)
 	default:
 		break;
 	}
+	taskEXIT_CRITICAL();
 }
 
 
@@ -467,6 +478,8 @@ perf_reset(perf_counter_t handle)
 	if (handle == NULL) {
 		return;
 	}
+
+	int ret = taskENTER_CRITICAL_FROM_ISR();
 	switch (handle->type) {
 	case PC_COUNT:
 		((struct perf_ctr_count *)handle)->event_count = 0;
@@ -493,6 +506,7 @@ perf_reset(perf_counter_t handle)
 			break;
 		}
 	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 void
@@ -504,6 +518,7 @@ perf_print_counter(perf_counter_t handle)
 		return;
 	}
 
+	int ret = taskENTER_CRITICAL_FROM_ISR();
 	switch (handle->type) {
 	case PC_COUNT:
         sprintf(print, "%10llu events|",
@@ -543,6 +558,7 @@ perf_print_counter(perf_counter_t handle)
 	default:
 		break;
 	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 }
 
 
@@ -555,6 +571,7 @@ perf_print_counter_buffer(char *buffer, int length, perf_counter_t handle)
 		return 0;
 	}
 
+	int ret = taskENTER_CRITICAL_FROM_ISR();
 	switch (handle->type) {
 	case PC_COUNT:
 		num_written = snprintf(buffer, length, "%s: %llu events",
@@ -593,6 +610,7 @@ perf_print_counter_buffer(char *buffer, int length, perf_counter_t handle)
 	default:
 		break;
 	}
+	taskEXIT_CRITICAL_FROM_ISR(ret);
 
 	buffer[length - 1] = 0; // ensure 0-termination
 	return num_written;
