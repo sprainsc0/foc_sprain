@@ -23,10 +23,10 @@ const osThreadAttr_t foc_attributes = {
 
 namespace MC_FOC {
 #pragma default_variable_attributes = @ ".ccram"
-	static FOC     gFOC;
-	static Encoder gEnc;
-	static HFI     gHfi;
-	static Observe gObser;
+	static FOC      gFOC;
+	static Encoder  gEnc;
+	static HFI      gHfi;
+	static Observer gObser;
 #pragma default_variable_attributes =
 }
 
@@ -52,6 +52,8 @@ FOC::FOC(void):
 	_iq_ctrl(0.0f, 0.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_refint(0),
 	_pre_foc_mode(0),
+	_calibration_ok(false),
+	_phase_now_observer(0.0f),
 	_param(NULL)
 {
 	memset(&_encoder_data, 0, sizeof(_encoder_data));
@@ -84,6 +86,8 @@ bool FOC::init(void)
 	_param_handles.motor_r_handle          = param_find("MOTOR_R");
 	_param_handles.motor_l_handle          = param_find("MOTOR_L");
 	_param_handles.flux_linkage_handle     = param_find("FLUX_LINKAGE");
+
+	_param_handles.l_current_max_handle    = param_find("CURRENT_MAX");
 
     MC_FOC::gHfi.init();
     MC_FOC::gObser.init();
@@ -161,6 +165,8 @@ void FOC::current_calibration(void)
     
     pwm_output_on();
 
+	_calibration_ok = true;
+
 	Info_Debug("Current calibration success\n");
 	Info_Debug("Ia-%d.%dV Ib-%d.%dV Ic-%d.%dV Ref-%d\n", (int)_mc_cfg.offset[0], (int)(_mc_cfg.offset[0]*1000)%1000, 
                (int)_mc_cfg.offset[1], (int)(_mc_cfg.offset[1]*1000)%1000,
@@ -190,6 +196,7 @@ void FOC::parameter_update(bool force)
 		param_get(_param_handles.motor_r_handle,          &_mc_cfg.motor_r);
 		param_get(_param_handles.motor_l_handle,          &_mc_cfg.motor_l);
 		param_get(_param_handles.flux_linkage_handle,     &_mc_cfg.flux_linkage);
+		param_get(_param_handles.l_current_max_handle,    &_mc_cfg.l_current_max);
 
 		_id_ctrl.kP(_mc_cfg.curr_d_p);
 		_id_ctrl.kI(_mc_cfg.curr_d_i);
@@ -201,6 +208,7 @@ void FOC::parameter_update(bool force)
 void FOC::run(void *parammeter)
 {
 	parameter_update(true);
+	MC_FOC::gObser.parameter_update(true);
 
 	while(1) {
 
@@ -232,6 +240,8 @@ void FOC::run(void *parammeter)
 		// push foc status
 		ipc_push(IPC_ID(foc_status), _foc_status_pub, &_foc_m);
 
+		MC_FOC::gObser.observer_task(&_foc_m);
+
 		if(_pre_foc_mode != _foc_ref.ctrl_mode) {
 			_pre_foc_mode = _foc_ref.ctrl_mode;
 			if(_foc_ref.ctrl_mode & MC_CTRL_ENABLE) {
@@ -253,7 +263,7 @@ void FOC::foc_process(void)
 {
 	bool is_v7 = !(TIM1->CR1 & TIM_CR1_DIR);
     
-    if (!_mc_cfg.foc_sample_v0_v7 && is_v7) {
+    if ((!_mc_cfg.foc_sample_v0_v7 && is_v7) || !_calibration_ok) {
         return;
     }
 
@@ -275,22 +285,6 @@ void FOC::foc_process(void)
     if(updated) {
         ipc_pull_isr(IPC_ID(foc_target), _foc_target_sub, &_foc_ref);
     }
-	
-	// wait until foc task ready
-	if (!(_foc_ref.ctrl_mode & MC_CTRL_ENABLE)) {
-		_id_ctrl.reset_I();
-		_iq_ctrl.reset_I();
-		if(_power_state) {
-			pwm_output_off();
-			_power_state = false;
-		}
-		return;
-	}
-
-    perf_begin_isr(foc_adc_ela);
-
-	_id_ctrl.set_dt(dt);
-	_iq_ctrl.set_dt(dt);
 
 	// get current date
 	for (uint16_t i = 0; i < 3; i++)
@@ -304,6 +298,38 @@ void FOC::foc_process(void)
         adc_value = VREFINT * ((adc_voltage[i]*(VREF/4096))/(_refint*(VREF/4096)));
 		_foc_m.v_phase[i] = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
 	}
+	
+	// wait until foc task ready
+	if (!(_foc_ref.ctrl_mode & MC_CTRL_ENABLE)) {
+		_id_ctrl.reset_I();
+		_iq_ctrl.reset_I();
+		if(_power_state) {
+			pwm_output_off();
+			_power_state = false;
+		}
+
+		_foc_m.i_d = 0.0f;
+		_foc_m.i_q = 0.0f;
+		_foc_m.i_d_filter = 0.0f;
+		_foc_m.i_q_filter = 0.0f;
+		_foc_m.i_alpha = 0.0f;
+		_foc_m.i_beta  = 0.0f;
+		_foc_m.i_abs_filter = 0.0f;
+
+		_foc_m.v_alpha = (2.0f / 3.0f) * _foc_m.v_phase[0] - (1.0f / 3.0f) * _foc_m.v_phase[1] - (1.0f / 3.0f) * _foc_m.v_phase[2];
+		_foc_m.v_beta  = ONE_BY_SQRT3 * _foc_m.v_phase[1] - ONE_BY_SQRT3 * _foc_m.v_phase[2];
+
+		MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_phase_now_observer, &_foc_m);
+
+		// just run on motor idle mode
+		MC_FOC::gObser.observer_idle(&_phase_now_observer);
+		return;
+	}
+
+    perf_begin_isr(foc_adc_ela);
+
+	_id_ctrl.set_dt(dt);
+	_iq_ctrl.set_dt(dt);
 
     if (_mc_cfg.foc_sample_v0_v7 && is_v7) {
         if (TIM1->CCR1 < TIM1->CCR2 && TIM1->CCR1 < TIM1->CCR3) {
@@ -323,7 +349,7 @@ void FOC::foc_process(void)
         }
     }
 
-	
+	MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_phase_now_observer, &_foc_m);
 
 	switch(_mc_cfg.sensor_type) {
 	case MC_SENSOR_ENC:
@@ -335,6 +361,7 @@ void FOC::foc_process(void)
 		break;
 	case MC_SENSORLESS:
 	default:
+		_foc_m.phase_rad = _phase_now_observer;
 		break;
 	}
 
@@ -353,6 +380,11 @@ void FOC::foc_process(void)
 	// park transform
 	_foc_m.i_d = c * _foc_m.i_alpha + s * _foc_m.i_beta;
 	_foc_m.i_q = c * _foc_m.i_beta - s * _foc_m.i_alpha;
+
+	UTILS_LP_FAST(_foc_m.i_d_filter, _foc_m.i_d, _current_filter_gain);
+	UTILS_LP_FAST(_foc_m.i_q_filter, _foc_m.i_q, _current_filter_gain);
+
+	_foc_m.i_abs_filter = sqrtf(SQ(_foc_m.i_d_filter) + SQ(_foc_m.i_q_filter));
 
 	// current loop
 	if(_foc_ref.ctrl_mode & MC_CTRL_CURRENT) {
@@ -388,6 +420,26 @@ void FOC::foc_process(void)
 	// re-park
 	float mod_alpha = c * _foc_m.mod_d - s * _foc_m.mod_q;
 	float mod_beta  = c * _foc_m.mod_q + s * _foc_m.mod_d;
+
+	// Deadtime compensation
+	const float i_alpha_filter = c * _foc_ref.id_target - s * _foc_ref.iq_target;
+	const float i_beta_filter = c * _foc_ref.iq_target + s * _foc_ref.id_target;
+	const float ia_filter = i_alpha_filter;
+	const float ib_filter = -0.5f * i_alpha_filter + SQRT3_BY_2 * i_beta_filter;
+	const float ic_filter = -0.5f * i_alpha_filter - SQRT3_BY_2 * i_beta_filter;
+	const float mod_alpha_filter_sgn = (2.0f / 3.0f) * SIGN(ia_filter) - (1.0f / 3.0f) * SIGN(ib_filter) - (1.0f / 3.0f) * SIGN(ic_filter);
+	const float mod_beta_filter_sgn = ONE_BY_SQRT3 * SIGN(ib_filter) - ONE_BY_SQRT3 * SIGN(ic_filter);
+
+	const float mod_comp_fact = _foc_dt_us * 1e-6 * _foc_f_sw;
+
+	const float mod_alpha_comp = mod_alpha_filter_sgn * mod_comp_fact;
+	const float mod_beta_comp = mod_beta_filter_sgn * mod_comp_fact;
+
+	// Apply compensation here so that 0 duty cycle has no glitches.
+	_foc_m.v_alpha = (mod_alpha - mod_alpha_comp) * (2.0f / 3.0f) * _foc_m.vbus;
+	_foc_m.v_beta  = (mod_beta - mod_beta_comp) * (2.0f / 3.0f) * _foc_m.vbus;
+	_foc_m.v_d = c * _foc_m.v_alpha + s * _foc_m.v_beta;
+	_foc_m.v_q = c * _foc_m.v_beta  - s * _foc_m.v_alpha;
 
 	// svpwm
 	top = TIM1->ARR;

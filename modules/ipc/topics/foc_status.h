@@ -20,6 +20,8 @@ struct foc_status_s {
 	float i_beta;
 	float i_q;
 	float i_d;
+	float i_q_filter;
+	float i_d_filter;
 	float v_d;
 	float v_q;
 	float mod_d;
@@ -32,6 +34,7 @@ struct foc_status_s {
 	float temperature;
 	float vbus;
 	float duty;
+	float i_abs_filter;
 };
 
 /* register this as object request broker structure */

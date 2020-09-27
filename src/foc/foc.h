@@ -47,7 +47,8 @@ protected:
 
 private:
     static bool _power_state;
-    uint8_t _pre_foc_mode;
+    uint8_t     _pre_foc_mode;
+    bool        _calibration_ok;
     
     struct motor_config {
         int   foc_sample_v0_v7;
@@ -64,6 +65,8 @@ private:
         float motor_r;
         float motor_l;
         float flux_linkage;
+
+        float l_current_max;
     } _mc_cfg;
 
     struct {
@@ -80,10 +83,16 @@ private:
         param_t motor_r_handle;
         param_t motor_l_handle;
         param_t flux_linkage_handle;
+
+        param_t l_current_max_handle;
     } _param_handles;
 
+    const float    _current_filter_gain = 0.1f;
+    const float    _foc_dt_us           = 0.138f; // us
+    const uint32_t _foc_f_sw            = 25000;
     // 参考电压
     uint16_t _refint;
+    float    _phase_now_observer;
 
     int _params_sub;
 

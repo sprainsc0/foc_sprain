@@ -25,6 +25,14 @@ const struct bgc_parameters_t foc_parameters = {
     {"MOTOR_L_DIFF",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
     {"FLUX_LINKAGE",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
 
+    {"OBSERVER_TYPE", PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
+    {"CURRENT_MAX",   PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 10.0f },
+    {"SAT_COMP",      PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+    {"TEMP_COMP",     PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
+    {"TEMP_BASE",     PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 25.0f },
+    {"OBS_GAIN",      PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 9e7 },
+    {"OBS_GAIN_SLOW", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.05f },
+
     // parameter count
-    18
+    24
 };

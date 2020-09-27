@@ -32,6 +32,14 @@ struct bgc_parameters_t {
     const struct param_info_s __param__MOTOR_L_DIFF;
     const struct param_info_s __param__FLUX_LINKAGE;
 
+    const struct param_info_s __param__OBSERVER_TYPE;
+    const struct param_info_s __param__CURRENT_MAX;
+    const struct param_info_s __param__SAT_COMP;  
+    const struct param_info_s __param__TEMP_COMP;  
+    const struct param_info_s __param__TEMP_BASE;   
+    const struct param_info_s __param__OBS_GAIN;    
+    const struct param_info_s __param__OBS_GAIN_SLOW;
+
 	const unsigned int param_count;
 };
 

@@ -5,6 +5,7 @@
 #include "topics/telemetry_status.h"
 #include "topics/encoder.h"
 #include "topics/foc_status.h"
+#include "topics/obs_status.h"
 #include "topics/foc_target.h"
 #include "topics/uavcan_parameter_request.h"
 #include "topics/uavcan_parameter_value.h"
@@ -21,6 +22,7 @@ IPC_DEFINE(encoder,                   struct encoder_s,                   4,    
 IPC_DEFINE(foc_status,                struct foc_status_s,                5,        false,    0);
 IPC_DEFINE(calibrate_status,          struct calibrate_status_s,          6,        false,    0);
 IPC_DEFINE(foc_target,                struct foc_target_s,                11,       false,    0);
+IPC_DEFINE(obs_status,                struct obs_status_s,                12,       false,    0);
 // queue buffer for can
 IPC_DEFINE(uavcan_parameter_request,  struct uavcan_parameter_request_s,  7,        true,     3);
 IPC_DEFINE(uavcan_parameter_value,    struct uavcan_parameter_value_s,    8,        true,     3);

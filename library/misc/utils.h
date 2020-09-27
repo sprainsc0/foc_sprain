@@ -19,6 +19,13 @@ extern "C"
 
 #define SQ(x)				((x) * (x))
 
+#define UTILS_LP_FAST(value, sample, filter_constant)	(value -= (filter_constant) * ((value) - (sample)))
+
+// nan and infinity check for floats
+#define UTILS_IS_INF(x)		((x) == (1.0 / 0.0) || (x) == (-1.0 / 0.0))
+#define UTILS_IS_NAN(x)		((x) != (x))
+#define UTILS_NAN_ZERO(x)	(x = UTILS_IS_NAN(x) ? 0.0 : x)
+
 bool is_zero(const float fVal1);
 bool is_positive(const float fVal1);
 bool is_negative(const float fVal1);
@@ -33,6 +40,12 @@ float angles_mean2(float *angles, int angles_num);
 float angle_difference(float angle1, float angle2);
 float angles_variance(float *angles, int angles_num);
 bool vector_2d_saturate(float *x, float *y, float max);
+int utils_truncate_number_abs(float *number, float max);
+
+float utils_fast_atan2(float y, float x);
+
+int utils_map_int(int x, int in_min, int in_max, int out_min, int out_max);
+float utils_map(float x, float in_min, float in_max, float out_min, float out_max);
 
 #ifdef __cplusplus
 }

@@ -159,4 +159,50 @@ bool vector_2d_saturate(float *x, float *y, float max)
 	return retval;
 }
 
+float utils_fast_atan2(float y, float x) 
+{
+	float abs_y = fabsf(y) + 1e-20; // kludge to prevent 0/0 condition
+	float angle;
+
+	if (x >= 0) {
+		float r = (x - abs_y) / (x + abs_y);
+		float rsq = r * r;
+		angle = ((0.1963 * rsq) - 0.9817) * r + (M_PI / 4.0);
+	} else {
+		float r = (x + abs_y) / (abs_y - x);
+		float rsq = r * r;
+		angle = ((0.1963 * rsq) - 0.9817) * r + (3.0 * M_PI / 4.0);
+	}
+
+	if (y < 0) {
+		return(-angle);
+	} else {
+		return(angle);
+	}
+}
+
+int utils_truncate_number_abs(float *number, float max) 
+{
+	int did_trunc = 0;
+
+	if (*number > max) {
+		*number = max;
+		did_trunc = 1;
+	} else if (*number < -max) {
+		*number = -max;
+		did_trunc = 1;
+	}
+
+	return did_trunc;
+}
+
+float utils_map(float x, float in_min, float in_max, float out_min, float out_max) 
+{
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+int utils_map_int(int x, int in_min, int in_max, int out_min, int out_max) 
+{
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 

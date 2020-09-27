@@ -134,7 +134,7 @@ float
 perf_count(perf_counter_t handle)
 {
 	if (handle == NULL) {
-		return;
+		return 0.0f;
 	}
 
     taskENTER_CRITICAL();

@@ -1398,6 +1398,9 @@
                     <name>$PROJ_DIR$\..\..\modules\ipc\topics\foc_status.h</name>
                 </file>
                 <file>
+                    <name>$PROJ_DIR$\..\..\modules\ipc\topics\obs_status.h</name>
+                </file>
+                <file>
                     <name>$PROJ_DIR$\..\..\modules\ipc\topics\parameter_update.h</name>
                 </file>
                 <file>

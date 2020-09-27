@@ -7,6 +7,8 @@
 #include "uPerf.h"
 #include "param.h"
 
+#include "topics/parameter_update.h"
+
 class HFI
 {
 public:
@@ -35,6 +37,8 @@ private:
         param_t motor_l_diff_handle;
         param_t flux_linkage_handle;
     } _param_handles;
+
+    int _params_sub;
 };
 
 #endif

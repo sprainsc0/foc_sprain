@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define TOPICS_COUNT (12u)
+#define TOPICS_COUNT (13u)
 
 /**
  * Object metadata.
