@@ -90,7 +90,7 @@ void Command::run(void *parameter)
                 } else if (_command.sub_cmd == 5) {
                     enter_cali_mode();
                     res = new RES_Cal(_cal_status_pub);
-                    res->do_calibration();
+                    res->do_calibration(_command.param1);
                     delete res;
                     exit_cali_mode();
                 }

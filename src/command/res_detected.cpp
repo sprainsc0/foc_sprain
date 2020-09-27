@@ -41,7 +41,7 @@ void RES_Cal::send_status(uint8_t status)
     ipc_push(IPC_ID(calibrate_status), _mavlink_cal_pub, &_cal_status);
 }
 
-bool RES_Cal::do_calibration()
+bool RES_Cal::do_calibration(float param)
 {
     bool updated = false;
     Info_Debug("[motor]Resistance Detected Waiting FOC Status\n");
@@ -58,6 +58,61 @@ bool RES_Cal::do_calibration()
 
     send_status(RES_CALIBRATE_STARTED);
     
+    _foc_ref.ctrl_mode = (MC_CTRL_OVERRIDE | MC_CTRL_CURRENT | MC_CTRL_ENABLE);
+    _foc_ref.id_target = 0;
+    _foc_ref.iq_target = 0;
+    _foc_ref.vd_target = 0;
+    _foc_ref.vq_target = 0;
+    _foc_ref.phase_override = 0;
+    ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
+
+    osDelay(200);
+
+    for(int c = 0; _foc_ref.iq_target <= param; c++) {
+        _foc_ref.iq_target += 0.005f;
+        ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
+        osDelay(10);
+    }
+
+    osDelay(100);
+
+    // sample
+    _sample.avg_current_tot = 0.0f;
+	_sample.avg_voltage_tot = 0.0f;
+	_sample.sample_num = 0;
+
+    int cnt = 0;
+	while (_sample.sample_num < 200) {
+		osDelay(1);
+		cnt++;
+		// Timeout
+		if (cnt > 10000) {
+            _foc_ref.ctrl_mode = MC_CTRL_IDLE;
+            _foc_ref.id_target = 0;
+            _foc_ref.iq_target = 0;
+            _foc_ref.vd_target = 0;
+            _foc_ref.vq_target = 0;
+            _foc_ref.phase_override = 0;
+            ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
+            send_status(RES_CALIBRATE_FAILED);
+            Info_Debug("[motor]Resistance Detected Failed\n");
+			break;
+		}
+        updated = false;
+        ipc_check(_foc_status_sub, &updated);
+        if(updated) {
+            struct foc_status_s data;
+            ipc_pull(IPC_ID(foc_status), _foc_status_sub, &data);
+
+            _sample.avg_current_tot += sqrtf(SQ(data.i_d) + SQ(data.i_q));
+            _sample.avg_voltage_tot += sqrtf(SQ(data.v_d) + SQ(data.v_q));
+            _sample.sample_num++;
+        }
+	}
+
+    const float current_avg = _sample.avg_current_tot / (float)_sample.sample_num;
+	const float voltage_avg = _sample.avg_voltage_tot / (float)_sample.sample_num;
+
     _foc_ref.ctrl_mode = MC_CTRL_IDLE;
     _foc_ref.id_target = 0;
     _foc_ref.iq_target = 0;
@@ -66,9 +121,7 @@ bool RES_Cal::do_calibration()
     _foc_ref.phase_override = 0;
     ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
 
-    osDelay(2000);
-
-    
+    _res_calibration.motor_res = (voltage_avg / current_avg) * (2.0f / 3.0f);
 
     set_res_parameter();
 

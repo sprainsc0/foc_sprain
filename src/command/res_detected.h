@@ -16,11 +16,17 @@ public:
     RES_Cal(orb_advert_t &cal_status_pub);
     ~RES_Cal(void);
     
-    bool do_calibration(void);
+    bool do_calibration(float param);
 
     void send_status(uint8_t status);
     
 private:
+
+    struct res_sample {
+        int sample_num;
+        float avg_current_tot;
+        float avg_voltage_tot;
+    } _sample;
     
     // ipc value
     int _params_sub;

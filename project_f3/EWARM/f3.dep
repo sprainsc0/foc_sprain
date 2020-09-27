@@ -2688,6 +2688,10 @@
                     <name>BICOMP</name>
                     <file> 595</file>
                 </tool>
+                <tool>
+                    <name>ICCARM</name>
+                    <file> 626</file>
+                </tool>
             </outputs>
             <inputs>
                 <tool>
@@ -2970,10 +2974,6 @@
                 <tool>
                     <name>BICOMP</name>
                     <file> 725</file>
-                </tool>
-                <tool>
-                    <name>ICCARM</name>
-                    <file> 724</file>
                 </tool>
             </outputs>
             <inputs>
@@ -3282,10 +3282,6 @@
                 </tool>
             </inputs>
         </file>
-        <forcedrebuild>
-            <name>[MULTI_TOOL]</name>
-            <tool>ILINK</tool>
-        </forcedrebuild>
         <forcedrebuild>
             <name>$PROJ_DIR$\..\..\bsp\uavcan.c</name>
             <tool>C-STAT</tool>
