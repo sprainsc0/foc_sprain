@@ -7,7 +7,7 @@
 #include "topics/foc_status.h"
 #include "topics/obs_status.h"
 #include "topics/foc_target.h"
-#include "topics/hfi_target.h"
+#include "topics/hfi_status.h"
 #include "topics/uavcan_parameter_request.h"
 #include "topics/uavcan_parameter_value.h"
 #include "topics/uavcan_command_request.h"
@@ -24,6 +24,7 @@ IPC_DEFINE(foc_status,                struct foc_status_s,                5,    
 IPC_DEFINE(calibrate_status,          struct calibrate_status_s,          6,        false,    0);
 IPC_DEFINE(foc_target,                struct foc_target_s,                11,       false,    0);
 IPC_DEFINE(obs_status,                struct obs_status_s,                12,       false,    0);
+IPC_DEFINE(hfi_status,                struct hfi_status_s,                13,       false,    0);
 // queue buffer for can
 IPC_DEFINE(uavcan_parameter_request,  struct uavcan_parameter_request_s,  7,        true,     3);
 IPC_DEFINE(uavcan_parameter_value,    struct uavcan_parameter_value_s,    8,        true,     3);

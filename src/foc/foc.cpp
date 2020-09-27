@@ -53,11 +53,11 @@ FOC::FOC(void):
 	_refint(0),
 	_pre_foc_mode(0),
 	_calibration_ok(false),
-	_phase_now_observer(0.0f),
 	_param(NULL)
 {
 	memset(&_encoder_data, 0, sizeof(_encoder_data));
 	memset(&_foc_ref, 0, sizeof(_foc_ref));
+	memset(&_hfi_inj, 0, sizeof(_hfi_inj));
 }
 
 FOC::~FOC(void)
@@ -89,7 +89,7 @@ bool FOC::init(void)
 
 	_param_handles.l_current_max_handle    = param_find("CURRENT_MAX");
 
-    MC_FOC::gHfi.init();
+    MC_FOC::gHfi.init((void *)&_foc_m);
     MC_FOC::gObser.init();
 
 	foc_adc_int  = perf_alloc(PC_INTERVAL, "adc_int");
@@ -264,6 +264,10 @@ void FOC::foc_process(void)
 	bool is_v7 = !(TIM1->CR1 & TIM_CR1_DIR);
     
     if ((!_mc_cfg.foc_sample_v0_v7 && is_v7) || !_calibration_ok) {
+		if(_hfi_inj.duty_injected) {
+			_hfi_inj.duty_injected = false;
+			hal_pwm_duty_write(_hfi_inj.pwm_inject[0], _hfi_inj.pwm_inject[1], _hfi_inj.pwm_inject[2]);
+		}
         return;
     }
 
@@ -319,10 +323,12 @@ void FOC::foc_process(void)
 		_foc_m.v_alpha = (2.0f / 3.0f) * _foc_m.v_phase[0] - (1.0f / 3.0f) * _foc_m.v_phase[1] - (1.0f / 3.0f) * _foc_m.v_phase[2];
 		_foc_m.v_beta  = ONE_BY_SQRT3 * _foc_m.v_phase[1] - ONE_BY_SQRT3 * _foc_m.v_phase[2];
 
-		MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_phase_now_observer, &_foc_m);
+		MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_foc_m.phase_observer, &_foc_m);
 
 		// just run on motor idle mode
-		MC_FOC::gObser.observer_idle(&_phase_now_observer);
+		MC_FOC::gObser.observer_idle(&_foc_m.phase_observer);
+
+		MC_FOC::gHfi.hfi_idle();
 		return;
 	}
 
@@ -349,7 +355,7 @@ void FOC::foc_process(void)
         }
     }
 
-	MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_phase_now_observer, &_foc_m);
+	MC_FOC::gObser.observer_update(_foc_m.v_alpha, _foc_m.v_beta, _foc_m.i_alpha, _foc_m.i_beta, dt, &_foc_m.phase_observer, &_foc_m);
 
 	switch(_mc_cfg.sensor_type) {
 	case MC_SENSOR_ENC:
@@ -361,7 +367,7 @@ void FOC::foc_process(void)
 		break;
 	case MC_SENSORLESS:
 	default:
-		_foc_m.phase_rad = _phase_now_observer;
+		_foc_m.phase_rad = _foc_m.phase_observer;
 		break;
 	}
 
@@ -409,10 +415,10 @@ void FOC::foc_process(void)
 	}
 	
 	// Current decoupling
-	float dec_vd = 0.0;
-	float dec_vq = 0.0;
-	float dec_bemf = 0.0;
-	if((_foc_ref.ctrl_mode < 0x1F) && (_mc_cfg.decoupling_type != FOC_CC_DECOUPLING_DISABLED))
+	float dec_vd = 0.0f;
+	float dec_vq = 0.0f;
+	float dec_bemf = 0.0f;
+	if((_foc_ref.ctrl_mode < 0x1F) && (_mc_cfg.decoupling_type != FOC_CC_DECOUPLING_DISABLED)) {
 		switch(_mc_cfg.decoupling_type) {
 		case FOC_CC_DECOUPLING_CROSS:
 			dec_vd = _foc_m.i_q * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
@@ -438,7 +444,7 @@ void FOC::foc_process(void)
 	_foc_m.v_q += dec_vq + dec_bemf;
 
 	// Saturation (inscribed cycle)
-	vector_2d_saturate(&_foc_m.v_d, &_foc_m.v_q, 
+	utils_saturate_vector_2d(&_foc_m.v_d, &_foc_m.v_q, 
 		(2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus);
 
 	_foc_m.mod_d = _foc_m.v_d / ((2.0 / 3.0) * _foc_m.vbus);
@@ -472,8 +478,20 @@ void FOC::foc_process(void)
 
 	bool hfi_ready = (_mc_cfg.sensor_type == MC_SENSOR_HFI) && !(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE); // TODO RPM limit
 
-	// svpwm
+	MC_FOC::gHfi.hfi_sample(hfi_ready, mod_alpha, mod_beta, &_foc_m);
+	float mod_alpha_temp = MC_FOC::gHfi.mod_alpha();
+	float mod_beta_temp  = MC_FOC::gHfi.mod_beta();
+
 	top = TIM1->ARR;
+
+	if(_mc_cfg.foc_sample_v0_v7) {
+		mod_alpha = mod_alpha_temp;
+		mod_beta  = mod_beta_temp;
+	} else {
+		svm(-mod_alpha_temp, -mod_beta_temp, top, &_hfi_inj.pwm_inject[0], &_hfi_inj.pwm_inject[1], &_hfi_inj.pwm_inject[2], &_foc_m.svm_sector);
+		_hfi_inj.duty_injected = true;
+	}
+
 	svm(-mod_alpha, -mod_beta, top, &_foc_m.pwm[0], &_foc_m.pwm[1], &_foc_m.pwm[2], &_foc_m.svm_sector);
 	
 	hal_pwm_duty_write(_foc_m.pwm[0], _foc_m.pwm[1], _foc_m.pwm[2]);

@@ -22,6 +22,7 @@ struct foc_status_s {
 	uint64_t timestamp;
 	uint8_t ctrl_mode;
 	float phase_rad;
+	float phase_observer;
 	float speed_rad;
 	float i_phase[3];
 	float i_alpha;

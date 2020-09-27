@@ -49,6 +49,11 @@ private:
     static bool _power_state;
     uint8_t     _pre_foc_mode;
     bool        _calibration_ok;
+
+    struct hfi_inject {
+        uint32_t pwm_inject[3];
+        bool duty_injected;
+    } _hfi_inj;
     
     struct motor_config {
         int   foc_sample_v0_v7;
@@ -92,7 +97,6 @@ private:
     const uint32_t _foc_f_sw            = 25000;
     // 参考电压
     uint16_t _refint;
-    float    _phase_now_observer;
 
     int _params_sub;
 

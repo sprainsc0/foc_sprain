@@ -39,13 +39,28 @@ float angles_mean(float *angles, int angles_num);
 float angles_mean2(float *angles, int angles_num);
 float angle_difference(float angle1, float angle2);
 float angles_variance(float *angles, int angles_num);
-bool vector_2d_saturate(float *x, float *y, float max);
 int utils_truncate_number_abs(float *number, float max);
+bool utils_saturate_vector_2d(float *x, float *y, float max);
 
 float utils_fast_atan2(float y, float x);
 
 int utils_map_int(int x, int in_min, int in_max, int out_min, int out_max);
 float utils_map(float x, float in_min, float in_max, float out_min, float out_max);
+
+void utils_fft32_bin0(float *real_in, float *real, float *imag);
+void utils_fft32_bin1(float *real_in, float *real, float *imag);
+void utils_fft32_bin2(float *real_in, float *real, float *imag);
+void utils_fft16_bin0(float *real_in, float *real, float *imag);
+void utils_fft16_bin1(float *real_in, float *real, float *imag);
+void utils_fft16_bin2(float *real_in, float *real, float *imag);
+void utils_fft8_bin0(float *real_in, float *real, float *imag);
+void utils_fft8_bin1(float *real_in, float *real, float *imag);
+void utils_fft8_bin2(float *real_in, float *real, float *imag);
+
+extern const float utils_tab_sin_32_1[];
+extern const float utils_tab_sin_32_2[];
+extern const float utils_tab_cos_32_1[];
+extern const float utils_tab_cos_32_2[];
 
 #ifdef __cplusplus
 }

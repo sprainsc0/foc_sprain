@@ -33,6 +33,13 @@ const struct bgc_parameters_t foc_parameters = {
     {"OBS_GAIN",      PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 9e7 },
     {"OBS_GAIN_SLOW", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.05f },
 
+    {"HFI_START_SAM", PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 65 },
+    {"HFI_V_START",   PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 8.0f },
+    {"HFI_V_RUN",     PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 8.0f },
+    {"HFI_V_MAX",     PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 8.0f },
+    {"HFI_OBS_OVER",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.001f },
+    {"HFI_SAM_NUM",   PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 1 },
+
     // parameter count
-    24
+    30
 };

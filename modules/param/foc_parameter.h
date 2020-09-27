@@ -40,6 +40,13 @@ struct bgc_parameters_t {
     const struct param_info_s __param__OBS_GAIN;    
     const struct param_info_s __param__OBS_GAIN_SLOW;
 
+    const struct param_info_s __param__HFI_START_SAM;
+    const struct param_info_s __param__HFI_V_START;
+    const struct param_info_s __param__HFI_V_RUN;  
+    const struct param_info_s __param__HFI_V_MAX;   
+    const struct param_info_s __param__HFI_OBS_OVER;
+    const struct param_info_s __param__HFI_SAM_NUM; 
+
 	const unsigned int param_count;
 };
 

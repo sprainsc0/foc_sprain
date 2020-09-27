@@ -37,7 +37,7 @@ private:
 
         float l_current_max;
         float foc_sat_comp;
-        bool  foc_temp_comp;
+        int   foc_temp_comp;
         float foc_temp_comp_base_temp;
 
         float observer_gain;
