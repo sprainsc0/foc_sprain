@@ -39,6 +39,7 @@ bool HFI::init(void *param)
     _param_handles.hfi_samples_handle       = param_find("HFI_SAM_NUM");
 
     _params_sub     = ipc_subscibe(IPC_ID(parameter_update));
+    _commander_sub  = ipc_subscibe(IPC_ID(foc_command));
 
     hfi_init(HFI_SAMPLES_16);
 
@@ -234,6 +235,16 @@ void HFI::run(void *parameter)
     while (1)
     {
         parameter_update(false);
+
+        bool cmd_updated = false;
+        ipc_check(_commander_sub, &cmd_updated);
+        if (cmd_updated) {
+            struct foc_command_s command;
+            ipc_pull(IPC_ID(foc_command), _commander_sub, &command);
+            if(command.command == CMD_HFI_COMMAND) {
+
+            }
+        }
 
         hfi_update();
         // 100Hz loop

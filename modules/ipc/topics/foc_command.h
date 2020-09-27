@@ -3,7 +3,8 @@
 
 #include "ipc.h"
 
-#define CMD_PRE_CALIBRATION        1
+#define CMD_PRE_CALIBRATION        1u
+#define CMD_HFI_COMMAND            2u
 
 struct foc_command_s {
 	uint64_t timestamp;

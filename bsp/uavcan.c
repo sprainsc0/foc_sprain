@@ -269,7 +269,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             foc_ctrl.vd_target = 0.0f;
             foc_ctrl.ctrl_mode = value[3];
 
-            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+            if(!(foc_control_mode & MC_CTRL_DUTY) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
                 ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
             }
 			return;
@@ -287,7 +287,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             foc_ctrl.vd_target = 0.0f;
             foc_ctrl.ctrl_mode = value[3];
 
-            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+            if(!(foc_control_mode & MC_CTRL_DUTY) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
                 ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
             }
 			return;
@@ -337,7 +337,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
             foc_ctrl.vd_target = 0.0f;
             foc_ctrl.ctrl_mode = value[3];
 
-            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+            if(!(foc_control_mode & MC_CTRL_DUTY) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
                 ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
             }
 			return;
@@ -356,7 +356,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
             foc_ctrl.vd_target = 0.0f;
             foc_ctrl.ctrl_mode = value[3];
 
-            if(!(foc_control_mode & MC_CTRL_TEST) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
+            if(!(foc_control_mode & MC_CTRL_DUTY) && !(foc_control_mode & MC_CTRL_OVERRIDE)) {
                 ipc_push(IPC_ID(foc_target), foc_ctrl_pub, &foc_ctrl);
             }
 			return;

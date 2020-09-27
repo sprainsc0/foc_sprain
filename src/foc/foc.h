@@ -114,6 +114,7 @@ private:
 
     PID _id_ctrl;
     PID _iq_ctrl;
+    PID _duty_ctrl;
 
     void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 		uint32_t* tAout, uint32_t* tBout, uint32_t* tCout, uint32_t *svm_sector);

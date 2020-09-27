@@ -42,6 +42,10 @@ float angles_variance(float *angles, int angles_num);
 int utils_truncate_number_abs(float *number, float max);
 bool utils_saturate_vector_2d(float *x, float *y, float max);
 
+int utils_truncate_number(float *number, float min, float max);
+int utils_truncate_number_int(int *number, int min, int max);
+int utils_truncate_number_abs(float *number, float max);
+
 float utils_fast_atan2(float y, float x);
 
 int utils_map_int(int x, int in_min, int in_max, int out_min, int out_max);

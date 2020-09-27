@@ -48,8 +48,9 @@ static void foc_func(FOC *pThis)
 }
 
 FOC::FOC(void):
-	_id_ctrl(0.0f, 0.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
-	_iq_ctrl(0.0f, 0.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
+	_id_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
+	_iq_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
+	_duty_ctrl(10.0f, 200.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_refint(0),
 	_pre_foc_mode(0),
 	_calibration_ok(false),
@@ -374,6 +375,30 @@ void FOC::foc_process(void)
 	// electric period
 	if(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) {
 		_foc_m.phase_rad = wrap_2PI(_foc_ref.phase_override);
+	}
+
+	if(_foc_ref.ctrl_mode & MC_CTRL_DUTY) {
+		if (fabsf(_foc_ref.target_duty) < (fabsf(_foc_m.duty) - 0.05f) || (SIGN(_foc_m.v_q) * _foc_m.i_q) < -_mc_cfg.l_current_max) {
+			// Compensation for supply voltage variations
+			float scale = 1.0f / _foc_m.vbus;
+
+			// Compute error
+			float error = _foc_ref.target_duty - _foc_m.duty;
+
+			_duty_ctrl.set_input_filter_d(error);
+
+			float output = _duty_ctrl.get_pi() * scale;
+			// Compute parameters
+			utils_truncate_number(&output, -1.0f, 1.0f);
+			_foc_ref.iq_target = output * _mc_cfg.l_current_max;
+		} else {
+			_mc_cfg.duty_max = _foc_ref.target_duty;
+			if (is_positive(_foc_ref.target_duty)) {
+				_foc_ref.iq_target = _mc_cfg.l_current_max;
+			} else {
+				_foc_ref.iq_target = -_mc_cfg.l_current_max;
+			}
+		}
 	}
 
 	s = arm_sin_f32(_foc_m.phase_rad);

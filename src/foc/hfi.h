@@ -8,6 +8,7 @@
 #include "param.h"
 
 #include "topics/parameter_update.h"
+#include "topics/foc_command.h"
 #include "topics/foc_status.h"
 #include "topics/hfi_status.h"
 
@@ -73,6 +74,7 @@ private:
     } _param_handles;
 
     int _params_sub;
+    int _commander_sub;
 
     struct hfi_status_s _hfi_m;
 

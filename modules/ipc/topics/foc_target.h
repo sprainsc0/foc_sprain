@@ -6,13 +6,13 @@
 
 typedef enum
 {
-	MC_CTRL_IDLE = 0,
-	MC_CTRL_ENABLE = 1 << 0,
+	MC_CTRL_IDLE     = 0,
+	MC_CTRL_ENABLE   = 1 << 0,
 	MC_CTRL_OVERRIDE = 1 << 1,
-	MC_CTRL_CURRENT = 1 << 2,
-	MC_CTRL_SPEED = 1 << 3,
-	MC_CTRL_POSITION = 1 << 4,
-	MC_CTRL_TEST = 1 << 5,
+	MC_CTRL_CURRENT  = 1 << 2,
+	MC_CTRL_DUTY     = 1 << 3,
+	MC_CTRL_SPEED    = 1 << 4,
+	MC_CTRL_POSITION = 1 << 5,
 } foc_ctrl_mode_t;
 
 
@@ -26,6 +26,7 @@ struct foc_target_s {
 	float vq_target;
 	float target_spd;
 	float target_rad;
+	float target_duty;
 
 	float phase_override;
 };

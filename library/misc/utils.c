@@ -52,6 +52,48 @@ bool is_negative(const float fVal1)
     return (fVal1 <= (-1.0 * FLT_EPSILON));
 }
 
+int utils_truncate_number(float *number, float min, float max) {
+	int did_trunc = 0;
+
+	if (*number > max) {
+		*number = max;
+		did_trunc = 1;
+	} else if (*number < min) {
+		*number = min;
+		did_trunc = 1;
+	}
+
+	return did_trunc;
+}
+
+int utils_truncate_number_int(int *number, int min, int max) {
+	int did_trunc = 0;
+
+	if (*number > max) {
+		*number = max;
+		did_trunc = 1;
+	} else if (*number < min) {
+		*number = min;
+		did_trunc = 1;
+	}
+
+	return did_trunc;
+}
+
+int utils_truncate_number_abs(float *number, float max) {
+	int did_trunc = 0;
+
+	if (*number > max) {
+		*number = max;
+		did_trunc = 1;
+	} else if (*number < -max) {
+		*number = -max;
+		did_trunc = 1;
+	}
+
+	return did_trunc;
+}
+
 // intuitive way
 float angles_mean(float *angles, int size)
 {
@@ -277,21 +319,6 @@ float utils_fast_atan2(float y, float x)
 	} else {
 		return(angle);
 	}
-}
-
-int utils_truncate_number_abs(float *number, float max) 
-{
-	int did_trunc = 0;
-
-	if (*number > max) {
-		*number = max;
-		did_trunc = 1;
-	} else if (*number < -max) {
-		*number = -max;
-		did_trunc = 1;
-	}
-
-	return did_trunc;
 }
 
 float utils_map(float x, float in_min, float in_max, float out_min, float out_max) 
