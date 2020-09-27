@@ -408,6 +408,35 @@ void FOC::foc_process(void)
 		_foc_m.v_q = _foc_ref.vq_target;
 	}
 	
+	// Current decoupling
+	float dec_vd = 0.0;
+	float dec_vq = 0.0;
+	float dec_bemf = 0.0;
+	if((_foc_ref.ctrl_mode < 0x1F) && (_mc_cfg.decoupling_type != FOC_CC_DECOUPLING_DISABLED))
+		switch(_mc_cfg.decoupling_type) {
+		case FOC_CC_DECOUPLING_CROSS:
+			dec_vd = _foc_m.i_q * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
+			dec_vq = _foc_m.i_d * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
+			break;
+
+		case FOC_CC_DECOUPLING_BEMF:
+			dec_bemf = _foc_m.speed_rad * _mc_cfg.flux_linkage;
+			break;
+
+		case FOC_CC_DECOUPLING_CROSS_BEMF:
+			dec_vd = _foc_m.i_q * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
+			dec_vq = _foc_m.i_d * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
+			dec_bemf = _foc_m.speed_rad * _mc_cfg.flux_linkage;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	_foc_m.v_d -= dec_vd;
+	_foc_m.v_q += dec_vq + dec_bemf;
+
 	// Saturation (inscribed cycle)
 	vector_2d_saturate(&_foc_m.v_d, &_foc_m.v_q, 
 		(2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus);
@@ -440,6 +469,8 @@ void FOC::foc_process(void)
 	_foc_m.v_beta  = (mod_beta - mod_beta_comp) * (2.0f / 3.0f) * _foc_m.vbus;
 	_foc_m.v_d = c * _foc_m.v_alpha + s * _foc_m.v_beta;
 	_foc_m.v_q = c * _foc_m.v_beta  - s * _foc_m.v_alpha;
+
+	bool hfi_ready = (_mc_cfg.sensor_type == MC_SENSOR_HFI) && !(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE); // TODO RPM limit
 
 	// svpwm
 	top = TIM1->ARR;

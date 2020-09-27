@@ -11,10 +11,18 @@ typedef enum
 	MC_SENSORLESS = 3
 } foc_sensor_type_t;
 
+typedef enum {
+	FOC_CC_DECOUPLING_DISABLED = 0,
+	FOC_CC_DECOUPLING_CROSS,
+	FOC_CC_DECOUPLING_BEMF,
+	FOC_CC_DECOUPLING_CROSS_BEMF
+} mc_foc_cc_decoupling_type;
+
 struct foc_status_s {
 	uint64_t timestamp;
 	uint8_t ctrl_mode;
 	float phase_rad;
+	float speed_rad;
 	float i_phase[3];
 	float i_alpha;
 	float i_beta;

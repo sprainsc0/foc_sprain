@@ -7,6 +7,7 @@
 #include "topics/foc_status.h"
 #include "topics/obs_status.h"
 #include "topics/foc_target.h"
+#include "topics/hfi_target.h"
 #include "topics/uavcan_parameter_request.h"
 #include "topics/uavcan_parameter_value.h"
 #include "topics/uavcan_command_request.h"
