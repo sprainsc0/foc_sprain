@@ -769,6 +769,10 @@
                     <file> 601</file>
                 </tool>
                 <tool>
+                    <name>ICCARM</name>
+                    <file> 351</file>
+                </tool>
+                <tool>
                     <name>__cstat</name>
                     <file> 488</file>
                 </tool>
@@ -1477,6 +1481,10 @@
                 <tool>
                     <name>BICOMP</name>
                     <file> 47</file>
+                </tool>
+                <tool>
+                    <name>ICCARM</name>
+                    <file> 147</file>
                 </tool>
                 <tool>
                     <name>__cstat</name>

@@ -242,12 +242,12 @@ void HFI::run(void *parameter)
             struct foc_command_s command;
             ipc_pull(IPC_ID(foc_command), _commander_sub, &command);
             if(command.command == CMD_HFI_COMMAND) {
-
+                hfi_init((foc_hfi_samples)command.param1);
             }
         }
 
         hfi_update();
-        // 100Hz loop
+        // 1000Hz loop
         osDelay(1);
     }
 }
