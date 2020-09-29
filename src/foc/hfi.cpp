@@ -111,17 +111,16 @@ void HFI::hfi_init(foc_hfi_samples samples)
 
 void HFI::hfi_sample(bool ready, float mod_alpha, float mod_beta, volatile foc_status_s *motor)
 {
+    _mod_alpha_tmp = mod_alpha;
+    _mod_beta_tmp = mod_beta;
+
     if(!ready) {
         _hfi_m.ind         = 0;
 		_hfi_m.ready       = false;
 		_hfi_m.is_samp_n   = false;
 		_hfi_m.prev_sample = 0.0f;
-
         return;
     }
-
-    _mod_alpha_tmp = mod_alpha;
-    _mod_beta_tmp = mod_beta;
 
     float hfi_voltage;
     if (_hfi_m.est_done_cnt < _hfi_cfg.hfi_start_samples) {

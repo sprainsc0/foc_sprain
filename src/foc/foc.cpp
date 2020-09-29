@@ -55,6 +55,7 @@ FOC::FOC(void):
 	_refint(0),
 	_pre_foc_mode(0),
 	_calibration_ok(false),
+	_openloop_rad(0.0f),
 	_param(NULL)
 {
 	memset(&_encoder_data, 0, sizeof(_encoder_data));
@@ -376,9 +377,12 @@ void FOC::foc_process(void)
 	// electric period
 	if(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) {
 		_foc_m.phase_rad = wrap_2PI(_foc_ref.phase_override);
+	} else if(_foc_ref.ctrl_mode & MC_CTRL_OPENLOOP) {
+		_openloop_rad += _foc_ref.openloop_spd * dt;
+		_foc_m.phase_rad = wrap_2PI(_openloop_rad);
 	}
 
-	if(_foc_ref.ctrl_mode & MC_CTRL_DUTY) {
+	if((_foc_ref.ctrl_mode & MC_CTRL_CURRENT) && (_foc_ref.ctrl_mode & MC_CTRL_DUTY)) {
 		if (fabsf(_foc_ref.target_duty) < (fabsf(_foc_m.duty) - 0.05f) || (SIGN(_foc_m.v_q) * _foc_m.i_q) < -_mc_cfg.l_current_max) {
 			// Compensation for supply voltage variations
 			float scale = 1.0f / _foc_m.vbus;
@@ -444,7 +448,7 @@ void FOC::foc_process(void)
 	float dec_vd = 0.0f;
 	float dec_vq = 0.0f;
 	float dec_bemf = 0.0f;
-	if((_foc_ref.ctrl_mode < 0x1F) && (_mc_cfg.decoupling_type != FOC_CC_DECOUPLING_DISABLED)) {
+	if((_foc_ref.ctrl_mode & MC_CTRL_CURRENT) && (_mc_cfg.decoupling_type != FOC_CC_DECOUPLING_DISABLED)) {
 		switch(_mc_cfg.decoupling_type) {
 		case FOC_CC_DECOUPLING_CROSS:
 			dec_vd = _foc_m.i_q * _foc_m.speed_rad * _mc_cfg.motor_l * (3.0f / 2.0f);
@@ -502,20 +506,24 @@ void FOC::foc_process(void)
 	_foc_m.v_d = c * _foc_m.v_alpha + s * _foc_m.v_beta;
 	_foc_m.v_q = c * _foc_m.v_beta  - s * _foc_m.v_alpha;
 
-	bool hfi_ready = (_mc_cfg.sensor_type == MC_SENSOR_HFI) && !(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE); // TODO RPM limit
+	bool hfi_ready = (_foc_ref.ctrl_mode & MC_CTRL_CURRENT) && 
+					 (_mc_cfg.sensor_type == MC_SENSOR_HFI) && 
+					 !(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) && 
+					 (_foc_m.speed_rad < _low_spd_limited);
 
 	MC_FOC::gHfi.hfi_sample(hfi_ready, mod_alpha, mod_beta, &_foc_m);
-	float mod_alpha_temp = MC_FOC::gHfi.mod_alpha();
-	float mod_beta_temp  = MC_FOC::gHfi.mod_beta();
 
 	top = TIM1->ARR;
-
-	if(_mc_cfg.foc_sample_v0_v7) {
-		mod_alpha = mod_alpha_temp;
-		mod_beta  = mod_beta_temp;
-	} else {
-		svm(-mod_alpha_temp, -mod_beta_temp, top, &_hfi_inj.pwm_inject[0], &_hfi_inj.pwm_inject[1], &_hfi_inj.pwm_inject[2], &_foc_m.svm_sector);
-		_hfi_inj.duty_injected = true;
+	if(hfi_ready) {
+		float mod_alpha_temp = MC_FOC::gHfi.mod_alpha();
+		float mod_beta_temp  = MC_FOC::gHfi.mod_beta();
+		if(_mc_cfg.foc_sample_v0_v7) {
+			mod_alpha = mod_alpha_temp;
+			mod_beta  = mod_beta_temp;
+		} else {
+			svm(-mod_alpha_temp, -mod_beta_temp, top, &_hfi_inj.pwm_inject[0], &_hfi_inj.pwm_inject[1], &_hfi_inj.pwm_inject[2], &_foc_m.svm_sector);
+			_hfi_inj.duty_injected = true;
+		}
 	}
 
 	svm(-mod_alpha, -mod_beta, top, &_foc_m.pwm[0], &_foc_m.pwm[1], &_foc_m.pwm[2], &_foc_m.svm_sector);

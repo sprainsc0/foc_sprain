@@ -13,6 +13,7 @@ typedef enum
 	MC_CTRL_DUTY     = 1 << 3,
 	MC_CTRL_SPEED    = 1 << 4,
 	MC_CTRL_POSITION = 1 << 5,
+	MC_CTRL_OPENLOOP = 1 << 6,
 } foc_ctrl_mode_t;
 
 
@@ -29,6 +30,7 @@ struct foc_target_s {
 	float target_duty;
 
 	float phase_override;
+	float openloop_spd;
 };
 
 /* register this as object request broker structure */

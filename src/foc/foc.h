@@ -96,8 +96,10 @@ private:
     const float    _current_filter_gain = 0.1f;
     const float    _foc_dt_us           = 0.138f; // us
     const uint32_t _foc_f_sw            = 25000;
+    const float    _low_spd_limited     = 1600.0f; // 
     // 参考电压
     uint16_t _refint;
+    float    _openloop_rad;
 
     int _params_sub;
 
