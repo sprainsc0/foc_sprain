@@ -51,6 +51,7 @@ FOC::FOC(void):
 	_id_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_iq_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_duty_ctrl(10.0f, 200.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
+	_td(CURRENT_RATE_DT, 300.0f, CURRENT_RATE_DT*2),
 	_refint(0),
 	_pre_foc_mode(0),
 	_calibration_ok(false),
@@ -525,6 +526,10 @@ void FOC::foc_process(void)
 		pwm_output_on();
 		_power_state = true;
 	}
+
+	_td.run(_foc_m.phase_rad);
+	_foc_m.phase_rad_filter = _td.x1();
+	_foc_m.speed_rad        = _td.x2();
 
 	perf_end_isr(foc_adc_ela);
 }

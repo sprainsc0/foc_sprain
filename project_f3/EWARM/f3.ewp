@@ -1243,6 +1243,9 @@
                 <name>$PROJ_DIR$\..\..\library\misc\crc32.c</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\..\library\misc\td.cpp</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\library\misc\utils.c</name>
             </file>
         </group>

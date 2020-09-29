@@ -9,6 +9,7 @@
 #include <pid/pid.h>
 #include <ipc.h>
 #include "param.h"
+#include "td.h"
 
 #include "topics/parameter_update.h"
 #include "topics/actuator_notify.h"
@@ -115,6 +116,8 @@ private:
     PID _id_ctrl;
     PID _iq_ctrl;
     PID _duty_ctrl;
+
+    TD  _td;
 
     void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 		uint32_t* tAout, uint32_t* tBout, uint32_t* tCout, uint32_t *svm_sector);
