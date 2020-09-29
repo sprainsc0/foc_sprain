@@ -509,6 +509,7 @@ void FOC::foc_process(void)
 	bool hfi_ready = (_foc_ref.ctrl_mode & MC_CTRL_CURRENT) && 
 					 (_mc_cfg.sensor_type == MC_SENSOR_HFI) && 
 					 !(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) && 
+					 !(_foc_ref.ctrl_mode & MC_CTRL_OPENLOOP) && 
 					 (_foc_m.speed_rad < _low_spd_limited);
 
 	MC_FOC::gHfi.hfi_sample(hfi_ready, mod_alpha, mod_beta, &_foc_m);

@@ -233,6 +233,31 @@ void Canlink::TransferReceived(CanardInstance* ins, CanardRxTransfer* transfer)
     }
 }
 
+void Canlink::processEncoder(void)
+{
+    uavcan_equipment_esc_Encoder enc;
+    uint8_t buffer[UAVCAN_EQUIPMENT_ESC_ENCODER_MAX_SIZE];
+    static uint8_t encoder_transfer_id = 0;
+    memset(buffer, 0, UAVCAN_EQUIPMENT_ESC_ENCODER_MAX_SIZE);
+
+    ipc_pull(IPC_ID(encoder), _encoder_sub, &_encoder_data);
+
+    enc.encoder = _encoder_data.angle_m;
+
+    const uint32_t total_size = uavcan_equipment_esc_Encoder_encode(&enc, buffer);
+
+    const int16_t resp_res = canardBroadcast(&canard,
+                                            UAVCAN_EQUIPMENT_ESC_ENCODER_SIGNATURE,
+                                            UAVCAN_EQUIPMENT_ESC_ENCODER_ID,
+                                            &encoder_transfer_id,
+                                            CANARD_TRANSFER_PRIORITY_HIGHEST,
+                                            &buffer[0],
+                                            (uint16_t)total_size);
+    if (resp_res <= 0) {
+        
+    }
+}
+
 void Canlink::send(void *parameter)
 {
     uint64_t next_1hz_service_at = micros();
@@ -241,7 +266,7 @@ void Canlink::send(void *parameter)
     {
         const uint64_t ts = micros();
 
-        //processEncoder();
+        processEncoder();
         
         if(ts >= next_1hz_service_at) {
 				next_1hz_service_at += 1000000;

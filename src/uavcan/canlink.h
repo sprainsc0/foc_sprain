@@ -43,6 +43,8 @@ private:
     struct foc_command_s _cmd_value;
 
     void processTasksLow(uint64_t timestamp_usec);
+
+    void processEncoder(void);
     
 };
 
