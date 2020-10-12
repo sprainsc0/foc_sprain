@@ -1,14 +1,14 @@
-"D:\IAR Systems\Embedded Workbench 8.3\arm\bin\armproc.dll" 
+"H:\IAR Systems\arm\bin\armproc.dll" 
 
-"D:\IAR Systems\Embedded Workbench 8.3\arm\bin\armjlink2.dll" 
+"H:\IAR Systems\arm\bin\armjlink2.dll" 
 
-"F:\SPRainCore\foc_sprain\project_f3\EWARM\f3\Exe\f3.out" 
+"E:\SPRain-Core\foc_sprain\project_f3\EWARM\f3\Exe\f3.out" 
 
---plugin="D:\IAR Systems\Embedded Workbench 8.3\arm\bin\armbat.dll" 
+--plugin="H:\IAR Systems\arm\bin\armbat.dll" 
 
---device_macro="D:\IAR Systems\Embedded Workbench 8.3\arm\config\debugger\ST\STM32F3xx.dmac" 
+--device_macro="H:\IAR Systems\arm\config\debugger\ST\STM32F3xx.dmac" 
 
---flash_loader="D:\IAR Systems\Embedded Workbench 8.3\arm\config\flashloader\ST\FlashSTM32F3xxxE.board" 
+--flash_loader="H:\IAR Systems\arm\config\flashloader\ST\FlashSTM32F3xxxE.board" 
 
 
 

@@ -6,7 +6,7 @@
 
 "-p" 
 
-"D:\IAR Systems\Embedded Workbench 8.3\arm\CONFIG\debugger\ST\STM32F303RE.ddf" 
+"H:\IAR Systems\arm\CONFIG\debugger\ST\STM32F303RE.ddf" 
 
 "--drv_verify_download" 
 
