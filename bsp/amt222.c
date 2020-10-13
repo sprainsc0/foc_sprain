@@ -5,9 +5,9 @@
 static void en(bool en)
 {
 	if (en)
-		HAL_GPIO_WritePin(SPI1_CS_2_GPIO_Port, SPI1_CS_2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
 	else
-		HAL_GPIO_WritePin(SPI1_CS_2_GPIO_Port, SPI1_CS_2_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
 }
 
 bool hal_amt222_read(uint32_t *raw)
@@ -20,9 +20,11 @@ bool hal_amt222_read(uint32_t *raw)
     value_tx[1] = 0x00;
     
 	en(true);
+	hal_delay_us(1);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[0], (uint8_t *)&value_rx[0], 1, 1);
 	hal_delay_us(2);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[1], (uint8_t *)&value_rx[1], 1, 1);
+	hal_delay_us(1);
 	en(false);
 
 	angle = (value_rx[0] & 0x3F) << 8;
@@ -63,10 +65,12 @@ void hal_amt222_reset(void)
     value_tx[1] = 0x60;
     
 	en(true);
+	hal_delay_us(2);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[0], (uint8_t *)&value_rx[0], 1, 1);
     while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
     hal_delay_us(2);
     HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&value_tx[1], (uint8_t *)&value_rx[1], 1, 1);
     while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY);
+	hal_delay_us(2);
 	en(false);
 }

@@ -56,6 +56,7 @@ private:
     struct encoder_s _enc_data;
 
     bool _enc_ready;
+    bool _enc_reset;
 
 	perf_counter_t enc_tim_int;
     perf_counter_t enc_tim_ela;

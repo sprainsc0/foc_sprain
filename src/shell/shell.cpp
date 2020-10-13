@@ -153,20 +153,20 @@ int perf_main(int argc, char *argv[])
             perf_print_all(0);
         }
 
-        if (!strcmp(argv[i], "task")) {
-            char pcWriteBuffer[500];
+        // if (!strcmp(argv[i], "task")) {
+        //     char pcWriteBuffer[500];
           
-            Info_Debug("Name\t\tStatus\tPriority\tStack\tSeq_num\n");
-            vTaskList((char *)pcWriteBuffer);
-            Info_Debug("%s\n", pcWriteBuffer);
-        }
+        //     Info_Debug("Name\t\tStatus\tPriority\tStack\tSeq_num\n");
+        //     vTaskList((char *)pcWriteBuffer);
+        //     Info_Debug("%s\n", pcWriteBuffer);
+        // }
 
         if (!strcmp(argv[i], "usage")) {
-            char pcWriteBuffer[500];
+            // char pcWriteBuffer[500];
           
-            Info_Debug("Name\t\tRunTimes\t\tUseRates\n");
-            vTaskGetRunTimeStats((char *)pcWriteBuffer);
-            Info_Debug("%s\n", pcWriteBuffer);
+            // Info_Debug("Name\t\tRunTimes\t\tUseRates\n");
+            // vTaskGetRunTimeStats((char *)pcWriteBuffer);
+            // Info_Debug("%s\n", pcWriteBuffer);
             
             Info_Debug("Heap:%d,free size:%d\n",configTOTAL_HEAP_SIZE, xPortGetFreeHeapSize());
         }

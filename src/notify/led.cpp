@@ -56,8 +56,8 @@ void LedNotify::run(void *parameter)
         
         blink_count++;
 
-        HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, led_stat ? GPIO_PIN_RESET : GPIO_PIN_SET);
-        HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, led_stat ? GPIO_PIN_RESET : GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, led_stat ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, led_stat ? GPIO_PIN_SET : GPIO_PIN_RESET);
         
         if (blink_count > 15) {
             blink_count = 0;

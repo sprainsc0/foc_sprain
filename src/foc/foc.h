@@ -17,13 +17,13 @@
 #include "topics/foc_status.h"
 #include "topics/foc_target.h"
 
-#define ADC_CURRENT_OHM		                  0.01f
+#define ADC_CURRENT_OHM		                  0.0005f
 #define ADC_CURRENT_AMP		                  20.0f
 #define VREFINT                               1.2f
 #define VREF                                  3.3f
             
-#define RESISTANCE1                           30.0f  // 30K
-#define RESISTANCE2                           3.3f   // 3.3K
+#define RESISTANCE1                           39.0f 
+#define RESISTANCE2                           2.2f  
 
 #define CURRENT_RATE_DT                       0.00008f
 
@@ -123,6 +123,8 @@ private:
 
     void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 		uint32_t* tAout, uint32_t* tBout, uint32_t* tCout, uint32_t *svm_sector);
+
+    void process_temperature(void);
     
     perf_counter_t foc_adc_int;
     perf_counter_t foc_adc_ela;

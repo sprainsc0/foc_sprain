@@ -6,7 +6,7 @@
 
 "-p" 
 
-"H:\IAR Systems\arm\CONFIG\debugger\ST\STM32F405RG.ddf" 
+"G:\IAR Systems\Embedded Workbench 8.4\arm\CONFIG\debugger\ST\STM32F405RG.ddf" 
 
 "--drv_verify_download" 
 
@@ -14,15 +14,19 @@
 
 "--device=STM32F405RG" 
 
+"--drv_communication=USB0" 
+
+"--drv_interface_speed=auto" 
+
+"--jlink_initial_speed=1000" 
+
+"--jlink_reset_strategy=0,2" 
+
 "--drv_interface=SWD" 
-
-"--stlink_reset_strategy=0,2" 
-
-"--drv_swo_clock_setup=168000000,0,2000000" 
 
 "--drv_catch_exceptions=0x000" 
 
-"--drv_debug_ap=0" 
+"--drv_swo_clock_setup=168000000,0,2000000" 
 
 
 

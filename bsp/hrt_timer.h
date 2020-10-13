@@ -5,7 +5,7 @@
 extern "C"{
 #endif
 
-#include "stm32f3xx_hal.h"
+#include "stm32f4xx_hal.h"
 
 extern uint64_t micros(void);
 

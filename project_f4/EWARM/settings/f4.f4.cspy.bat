@@ -25,7 +25,7 @@ if not "%~1" == "" goto debugFile
 
 @echo on 
 
-"H:\IAR Systems\common\bin\cspybat" -f "E:\SPRain-Core\foc_sprain\project_f4\EWARM\settings\f4.f4.general.xcl" --backend -f "E:\SPRain-Core\foc_sprain\project_f4\EWARM\settings\f4.f4.driver.xcl" 
+"G:\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "K:\BlackBox\foc_sprain\project_f4\EWARM\settings\f4.f4.general.xcl" --backend -f "K:\BlackBox\foc_sprain\project_f4\EWARM\settings\f4.f4.driver.xcl" 
 
 @echo off 
 goto end 
@@ -34,7 +34,7 @@ goto end
 
 @echo on 
 
-"H:\IAR Systems\common\bin\cspybat" -f "E:\SPRain-Core\foc_sprain\project_f4\EWARM\settings\f4.f4.general.xcl" "--debug_file=%~1" --backend -f "E:\SPRain-Core\foc_sprain\project_f4\EWARM\settings\f4.f4.driver.xcl" 
+"G:\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "K:\BlackBox\foc_sprain\project_f4\EWARM\settings\f4.f4.general.xcl" "--debug_file=%~1" --backend -f "K:\BlackBox\foc_sprain\project_f4\EWARM\settings\f4.f4.driver.xcl" 
 
 @echo off 
 :end

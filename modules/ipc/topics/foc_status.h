@@ -41,7 +41,9 @@ struct foc_status_s {
 	float v_alpha;
 	float v_beta;
 	uint32_t pwm[3];
-	float temperature;
+	float temp_chip;
+	float temp_pcb;
+	float temp_motor;
 	float vbus;
 	float duty;
 	float i_abs_filter;

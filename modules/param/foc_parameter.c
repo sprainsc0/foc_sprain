@@ -20,8 +20,8 @@ const struct bgc_parameters_t foc_parameters = {
 
     {"SENSOR_TYPE",   PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
     {"DECOUPLING",    PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
-    {"MOTOR_R",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
-    {"MOTOR_L",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
+    {"MOTOR_R",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.608f },
+    {"MOTOR_L",       PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 4.63e-4f },
     {"MOTOR_L_DIFF",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
     {"FLUX_LINKAGE",  PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.0f },
 

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "debug.h"
-#include "stm32f3xx_hal.h"
+#include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
 #include "flashfs.h"
 #include "misc/crc32.h"
@@ -76,14 +76,61 @@ const flash_file_token_t parameters_token = {
  * Private Functions
  ****************************************************************************/
 
+
 static uint32_t GetSector(uint32_t Address)
 {
-	uint32_t sector = 0;
-	Address = Address - 0x8000000;
-
-	sector = Address / 0x800;
-
-	return sector;
+  uint32_t sector = 0;
+  
+  if((Address < ADDR_FLASH_SECTOR_1) && (Address >= ADDR_FLASH_SECTOR_0))
+  {
+    sector = FLASH_SECTOR_0;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_2) && (Address >= ADDR_FLASH_SECTOR_1))
+  {
+    sector = FLASH_SECTOR_1;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_3) && (Address >= ADDR_FLASH_SECTOR_2))
+  {
+    sector = FLASH_SECTOR_2;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_4) && (Address >= ADDR_FLASH_SECTOR_3))
+  {
+    sector = FLASH_SECTOR_3;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_5) && (Address >= ADDR_FLASH_SECTOR_4))
+  {
+    sector = FLASH_SECTOR_4;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_6) && (Address >= ADDR_FLASH_SECTOR_5))
+  {
+    sector = FLASH_SECTOR_5;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_7) && (Address >= ADDR_FLASH_SECTOR_6))
+  {
+    sector = FLASH_SECTOR_6;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_8) && (Address >= ADDR_FLASH_SECTOR_7))
+  {
+    sector = FLASH_SECTOR_7;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_9) && (Address >= ADDR_FLASH_SECTOR_8))
+  {
+    sector = FLASH_SECTOR_8;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_10) && (Address >= ADDR_FLASH_SECTOR_9))
+  {
+    sector = FLASH_SECTOR_9;  
+  }
+  else if((Address < ADDR_FLASH_SECTOR_11) && (Address >= ADDR_FLASH_SECTOR_10))
+  {
+    sector = FLASH_SECTOR_10;  
+  }
+  else
+  {
+    sector = FLASH_SECTOR_11;  
+  }
+ 
+  return sector;
 }
 
 int16_t up_progmem_write(uint32_t addr, const void *buf, uint32_t count)
@@ -630,6 +677,33 @@ static sector_descriptor_t *get_sector_info(flash_entry_header_t *current)
  *
  ****************************************************************************/
 
+// static int erase_sector(sector_descriptor_t *sm, flash_entry_header_t *pf)
+// {
+// 	int rv = 0;
+// 	int16_t page = GetSector((uint32_t)pf);
+//     FLASH_EraseInitTypeDef pEraseInit;
+//     uint32_t SectorError;
+
+// 	if (page > 0 && page == sm->page) {
+//         HAL_FLASH_Unlock(); 
+        
+// 		last_erased = sm->page;
+        
+//         pEraseInit.TypeErase   = FLASH_TYPEERASE_PAGES;
+// 		pEraseInit.PageAddress = sm->address;
+// 		pEraseInit.NbPages = 1;
+    
+//         if (HAL_FLASHEx_Erase(&pEraseInit, &SectorError) != HAL_OK)
+//         {
+//             /* Error occurred while page erase */
+//             rv = -1;
+//         }
+
+// 		HAL_FLASH_Lock();
+// 	}
+
+// 	return rv;
+// }
 static int erase_sector(sector_descriptor_t *sm, flash_entry_header_t *pf)
 {
 	int rv = 0;
@@ -639,12 +713,14 @@ static int erase_sector(sector_descriptor_t *sm, flash_entry_header_t *pf)
 
 	if (page > 0 && page == sm->page) {
         HAL_FLASH_Unlock(); 
-        
+        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | 
+                            FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+
 		last_erased = sm->page;
-        
-        pEraseInit.TypeErase   = FLASH_TYPEERASE_PAGES;
-		pEraseInit.PageAddress = sm->address;
-		pEraseInit.NbPages = 1;
+        pEraseInit.TypeErase = TYPEERASE_SECTORS;
+        pEraseInit.Sector = sm->page;
+        pEraseInit.NbSectors = 1;
+        pEraseInit.VoltageRange = VOLTAGE_RANGE_3;
     
         if (HAL_FLASHEx_Erase(&pEraseInit, &SectorError) != HAL_OK)
         {
@@ -1060,13 +1136,18 @@ int parameter_flashfs_init(sector_descriptor_t *fconfig, uint8_t *buffer, uint16
 /****************************************************************************
  * Public Data
  ****************************************************************************/
+// static sector_descriptor_t params_sector_map[] = {
+//     {250, 2 * 1024, 0x0807D000},  // 2K Bytes 0x0807D000 - 0x0807D7FF
+// 	{251, 2 * 1024, 0x0807D800},  // 2K Bytes 0x0807D800 - 0x0807DFFF
+// 	{252, 2 * 1024, 0x0807E000},  // 2K Bytes 0x0807E000 - 0x0807E7FF
+// 	{253, 2 * 1024, 0x0807E800},  // 2K Bytes 0x0807E800 - 0x0807EFFF
+// 	{254, 2 * 1024, 0x0807F000},  // 2K Bytes 0x0807F000 - 0x0807F7FF
+// 	{255, 2 * 1024, 0x0807F800},  // 2K Bytes 0x0807F800 - 0x0807FFFF
+//     {0, 0, 0},
+// };
+
 static sector_descriptor_t params_sector_map[] = {
-    {250, 2 * 1024, 0x0807D000},  // 2K Bytes 0x0807D000 - 0x0807D7FF
-	{251, 2 * 1024, 0x0807D800},  // 2K Bytes 0x0807D800 - 0x0807DFFF
-	{252, 2 * 1024, 0x0807E000},  // 2K Bytes 0x0807E000 - 0x0807E7FF
-	{253, 2 * 1024, 0x0807E800},  // 2K Bytes 0x0807E800 - 0x0807EFFF
-	{254, 2 * 1024, 0x0807F000},  // 2K Bytes 0x0807F000 - 0x0807F7FF
-	{255, 2 * 1024, 0x0807F800},  // 2K Bytes 0x0807F800 - 0x0807FFFF
+    {11, 128 * 1024, 0x080E0000},
     {0, 0, 0},
 };
 

@@ -36,8 +36,6 @@ struct perf_ctr_elapsed {
 	uint64_t		time_total;
 	uint32_t		time_least;
 	uint32_t		time_most;
-	float			mean;
-	float			M2;
 };
 
 /**
@@ -51,8 +49,6 @@ struct perf_ctr_interval {
 	uint64_t		time_last;
 	uint32_t		time_least;
 	uint32_t		time_most;
-	float			mean;
-	float			M2;
 };
 
 /**
@@ -67,17 +63,17 @@ perf_alloc(enum perf_counter_type type, const char *name)
 	taskENTER_CRITICAL();
 	switch (type) {
 	case PC_COUNT:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_count));
+		ctr = (perf_counter_t)malloc(sizeof(struct perf_ctr_count));
         memset(ctr, 0, sizeof(struct perf_ctr_count));
 		break;
 
 	case PC_ELAPSED:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_elapsed));
+		ctr = (perf_counter_t)malloc(sizeof(struct perf_ctr_elapsed));
         memset(ctr, 0, sizeof(struct perf_ctr_elapsed));
 		break;
 
 	case PC_INTERVAL:
-		ctr = (perf_counter_t)pvPortMalloc(sizeof(struct perf_ctr_interval));
+		ctr = (perf_counter_t)malloc(sizeof(struct perf_ctr_interval));
         memset(ctr, 0, sizeof(struct perf_ctr_interval));
 		break;
 
@@ -157,8 +153,6 @@ perf_count(perf_counter_t handle)
 			case 1:
 				pci->time_least = (uint32_t)(now - pci->time_last);
 				pci->time_most = (uint32_t)(now - pci->time_last);
-				pci->mean = pci->time_least / 1e6f;
-				pci->M2 = 0;
 				break;
 
 			default: {
@@ -172,12 +166,7 @@ perf_count(perf_counter_t handle)
 						pci->time_most = (uint32_t)interval;
 					}
 
-					// maintain mean and variance of interval in seconds
-					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					dt = interval / 1e6f;
-					const float delta_intvl = dt - pci->mean;
-					pci->mean += delta_intvl / pci->event_count;
-					pci->M2 += delta_intvl * (dt - pci->mean);
+					dt = (float)(interval / 1e6f);
 					break;
 				}
 			}
@@ -220,8 +209,6 @@ perf_count_isr(perf_counter_t handle)
 			case 1:
 				pci->time_least = (uint32_t)(now - pci->time_last);
 				pci->time_most = (uint32_t)(now - pci->time_last);
-				pci->mean = pci->time_least / 1e6f;
-				pci->M2 = 0;
 				break;
 
 			default: {
@@ -235,12 +222,7 @@ perf_count_isr(perf_counter_t handle)
 						pci->time_most = (uint32_t)interval;
 					}
 
-					// maintain mean and variance of interval in seconds
-					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					dt = interval / 1e6f;
-					const float delta_intvl = dt - pci->mean;
-					pci->mean += delta_intvl / pci->event_count;
-					pci->M2 += delta_intvl * (dt - pci->mean);
+					dt = (float)(interval / 1e6f);
 					break;
 				}
 			}
@@ -305,7 +287,7 @@ perf_end(perf_counter_t handle)
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
 
 			if (pce->time_start != 0) {
-				int64_t elapsed = micros() - pce->time_start;
+				volatile int64_t elapsed = micros() - pce->time_start;
 
 				if (elapsed >= 0) {
 
@@ -319,13 +301,6 @@ perf_end(perf_counter_t handle)
 					if (pce->time_most < (uint32_t)elapsed) {
 						pce->time_most = elapsed;
 					}
-
-					// maintain mean and variance of the elapsed time in seconds
-					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					float dt = elapsed / 1e6f;
-					float delta_intvl = dt - pce->mean;
-					pce->mean += delta_intvl / pce->event_count;
-					pce->M2 += delta_intvl * (dt - pce->mean);
 
 					pce->time_start = 0;
 				}
@@ -351,7 +326,7 @@ perf_end_isr(perf_counter_t handle)
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
 
 			if (pce->time_start != 0) {
-				int64_t elapsed = micros() - pce->time_start;
+				volatile int64_t elapsed = micros() - pce->time_start;
 
 				if (elapsed >= 0) {
 
@@ -365,13 +340,6 @@ perf_end_isr(perf_counter_t handle)
 					if (pce->time_most < (uint32_t)elapsed) {
 						pce->time_most = elapsed;
 					}
-
-					// maintain mean and variance of the elapsed time in seconds
-					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					float dt = elapsed / 1e6f;
-					float delta_intvl = dt - pce->mean;
-					pce->mean += delta_intvl / pce->event_count;
-					pce->M2 += delta_intvl * (dt - pce->mean);
 
 					pce->time_start = 0;
 				}
@@ -409,13 +377,6 @@ perf_set_elapsed(perf_counter_t handle, int64_t elapsed)
 				if (pce->time_most < (uint32_t)elapsed) {
 					pce->time_most = elapsed;
 				}
-
-				// maintain mean and variance of the elapsed time in seconds
-				// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-				float dt = elapsed / 1e6f;
-				float delta_intvl = dt - pce->mean;
-				pce->mean += delta_intvl / pce->event_count;
-				pce->M2 += delta_intvl * (dt - pce->mean);
 
 				pce->time_start = 0;
 			}
@@ -521,36 +482,31 @@ perf_print_counter(perf_counter_t handle)
 	int ret = taskENTER_CRITICAL_FROM_ISR();
 	switch (handle->type) {
 	case PC_COUNT:
-        sprintf(print, "%10llu events|",
-			(unsigned long long)((struct perf_ctr_count *)handle)->event_count);
+        sprintf(print, "%10lu events|",
+			(unsigned long)((struct perf_ctr_count *)handle)->event_count);
 		Info_Debug("%16s:\t %s\n", handle->name, print);
 		break;
 
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
-			float rms = sqrtf(pce->M2 / (pce->event_count - 1));
             
-			sprintf(print, "%10llu events| %10lluus elapsed| %10lluus avg| min %10lluus| max %10lluus| %5.3fus rms",
-				(unsigned long long)pce->event_count,
-				(unsigned long long)pce->time_total,
-				(pce->event_count == 0) ? 0 : (unsigned long long)pce->time_total / pce->event_count,
-				(unsigned long long)pce->time_least,
-				(unsigned long long)pce->time_most,
-				(double)(1e6f * rms));
+			sprintf(print, "%10lu events| %10lu avg| min %10lu| max %10lu",
+				(unsigned long)pce->event_count,
+				(pce->event_count == 0) ? 0 : (unsigned long)pce->time_total / (unsigned long)pce->event_count,
+				(unsigned long)pce->time_least,
+				(unsigned long)pce->time_most);
             Info_Debug("%16s:\t %s\n", handle->name, print);
 			break;
 		}
 
 	case PC_INTERVAL: {
 			struct perf_ctr_interval *pci = (struct perf_ctr_interval *)handle;
-			float rms = sqrtf(pci->M2 / (pci->event_count - 1));
 
-			sprintf(print, "%10llu events| %10lluus avg| min %10lluus| max %10lluus| %5.3fus rms",
-				(unsigned long long)pci->event_count,
-				(pci->event_count == 0) ? 0 : (unsigned long long)(pci->time_last - pci->time_first) / pci->event_count,
-				(unsigned long long)pci->time_least,
-				(unsigned long long)pci->time_most,
-				(double)(1e6f * rms));
+			sprintf(print, "%10lu events| %10lu avg| min %10lu| max %10lu",
+				(unsigned long)pci->event_count,
+				(pci->event_count == 0) ? 0 : (unsigned long)(pci->time_last - pci->time_first) / (unsigned long)pci->event_count,
+				(unsigned long)pci->time_least,
+				(unsigned long)pci->time_most);
             Info_Debug("%16s:\t %s\n", handle->name, print);
 			break;
 		}
@@ -581,29 +537,24 @@ perf_print_counter_buffer(char *buffer, int length, perf_counter_t handle)
 
 	case PC_ELAPSED: {
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
-			float rms = sqrtf(pce->M2 / (pce->event_count - 1));
-			num_written = snprintf(buffer, length, "%s: %llu events, %lluus elapsed, %lluus avg, min %lluus max %lluus %5.3fus rms",
+			num_written = snprintf(buffer, length, "%s: %llu events, %lluus avg, min %lluus max %lluus",
 					       handle->name,
 					       (unsigned long long)pce->event_count,
-					       (unsigned long long)pce->time_total,
 					       (pce->event_count == 0) ? 0 : (unsigned long long)pce->time_total / pce->event_count,
 					       (unsigned long long)pce->time_least,
-					       (unsigned long long)pce->time_most,
-					       (double)(1e6f * rms));
+					       (unsigned long long)pce->time_most);
 			break;
 		}
 
 	case PC_INTERVAL: {
 			struct perf_ctr_interval *pci = (struct perf_ctr_interval *)handle;
-			float rms = sqrtf(pci->M2 / (pci->event_count - 1));
 
-			num_written = snprintf(buffer, length, "%s: %llu events, %lluus avg, min %lluus max %lluus %5.3fus rms",
+			num_written = snprintf(buffer, length, "%s: %llu events, %lluus avg, min %lluus max %lluus",
 					       handle->name,
 					       (unsigned long long)pci->event_count,
 					       (pci->event_count == 0) ? 0 : (unsigned long long)(pci->time_last - pci->time_first) / pci->event_count,
 					       (unsigned long long)pci->time_least,
-					       (unsigned long long)pci->time_most,
-					       (double)(1e6f * rms));
+					       (unsigned long long)pci->time_most);
 			break;
 		}
 

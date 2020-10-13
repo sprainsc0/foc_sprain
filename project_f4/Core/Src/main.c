@@ -101,11 +101,11 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM6_Init();
   MX_ADC2_Init();
-  MX_TIM8_Init();
   MX_ADC3_Init();
   MX_USART6_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_TIM2_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

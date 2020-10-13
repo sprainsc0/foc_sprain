@@ -14,7 +14,7 @@ extern "C"
 #include <stddef.h>
 #include <string.h>
 #include <math.h>				// to slow
-#include <stm32f3xx.h>
+#include <stm32f4xx.h>
 #include <float.h>
 #include <arm_math.h>
 

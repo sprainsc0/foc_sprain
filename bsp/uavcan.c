@@ -2,7 +2,7 @@
 #include "can.h"
 #include "ringbuffer.h"
 #include <canard.h>
-#include <stm32f3xx_hal.h>
+#include <stm32f4xx_hal.h>
 #include "cmsis_os.h"
 #include "debug.h"
 #include "hrt_timer.h"
@@ -57,7 +57,7 @@ void uavcan_init(void)
     sFilterConfig.FilterActivation = ENABLE;
     sFilterConfig.SlaveStartFilterBank = 14;
 
-    if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
+    if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
     {
         /* Filter configuration Error */
         Info_Debug("Can Filter init error \n");
@@ -76,54 +76,54 @@ void uavcan_init(void)
 	ringbuffer_init(&can1_ring, can1_buffer, CAN1_RINGBUFFER_SIZE);
 
     /*## Start the CAN peripheral ###########################################*/
-    if (HAL_CAN_Start(&hcan) != HAL_OK)
+    if (HAL_CAN_Start(&hcan1) != HAL_OK)
     {
         Info_Debug("Can start error \n");
     }
     
     // RX Interrupt
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_FULL) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_FULL) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_OVERRUN) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_OVERRUN) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_FULL) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_FULL) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_OVERRUN) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_OVERRUN) != HAL_OK) {
         Error_Handler();
     }
 
     // ERROR Interrupt
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_ERROR_WARNING) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_ERROR_WARNING) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_ERROR_PASSIVE) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_ERROR_PASSIVE) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_BUSOFF) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_BUSOFF) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_LAST_ERROR_CODE) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_LAST_ERROR_CODE) != HAL_OK) {
         Error_Handler();
     }
 
-    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_ERROR) != HAL_OK) {
+    if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_ERROR) != HAL_OK) {
         Error_Handler();
     }
 }
@@ -235,7 +235,7 @@ int STM32_CAN_Filters(void *config, uint32_t num_filter_configs)
         sFilterConfig.FilterActivation = ENABLE;
         sFilterConfig.SlaveStartFilterBank = 14;
 
-        if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
+        if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
         {
             /* Filter configuration Error */
             return 0;
@@ -302,7 +302,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     rxframe.data_len = p_rxheader.DLC;
 
     // detect if the message is bgc control
-    if(hcan->Instance == CAN && can1_ring.buffer_ptr != NULL) {
+    if(hcan->Instance == CAN1 && can1_ring.buffer_ptr != NULL) {
         ringbuffer_put(&can1_ring, (const uint8_t *)&rxframe, sizeof(rxframe));
     }
 }
@@ -370,7 +370,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
     rxframe.data_len = p_rxheader.DLC;
 
-    if(hcan->Instance == CAN && can1_ring.buffer_ptr != NULL) {
+    if(hcan->Instance == CAN1 && can1_ring.buffer_ptr != NULL) {
         ringbuffer_put(&can1_ring, (const uint8_t *)&rxframe, sizeof(rxframe));
     } 
 }
@@ -425,11 +425,11 @@ int CAN_Transmit(const void* txframe)
     p_txheader.DLC = frame->data_len;
     p_txheader.TransmitGlobalTime = DISABLE;
     
-    if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0) {
+    if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0) {
         return 0;
     }
 
-    if(HAL_CAN_AddTxMessage(&hcan, &p_txheader, frame->data, &CAN1TxMailbox) != HAL_OK) {
+    if(HAL_CAN_AddTxMessage(&hcan1, &p_txheader, frame->data, &CAN1TxMailbox) != HAL_OK) {
         return 0;
     }
     

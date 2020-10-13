@@ -77,7 +77,7 @@ void Observer::observer_update(float v_alpha, float v_beta, float i_alpha, float
 	R -= R * sign * _obs_cfg.foc_sat_comp * (motor->i_abs_filter / _obs_cfg.l_current_max);
 
 	// Temperature compensation
-	const float t = motor->temperature;
+	const float t = motor->temp_motor;
 	if (_obs_cfg.foc_temp_comp && t > -25.0) {
 		R += R * 0.00386 * (t - _obs_cfg.foc_temp_comp_base_temp);
 	}

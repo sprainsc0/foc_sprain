@@ -16,6 +16,7 @@ static void enc_func(Encoder *pThis)
 
 Encoder::Encoder(void) :
 	_enc_ready(false),
+	_enc_reset(false),
 	_param(NULL)
 {
 
@@ -90,9 +91,13 @@ void Encoder::run(void *parammeter)
 		ipc_push(IPC_ID(encoder), _encoder_pub, &_enc_data);
 
 		parameter_update(false);
-		if(((ts - start_timr) > 250000) && !_enc_ready) {
+		if(((ts - start_timr) > 250000) && !_enc_reset) {
 			hal_amt222_reset();
-			osDelay(250);
+			start_timr = ts;
+			_enc_reset = true;
+		}
+
+		if(((ts - start_timr) > 350000) && !_enc_ready) {
 			_enc_ready = true;
 		}
 

@@ -11,10 +11,21 @@
 #include "../encoder/encoder.h"
 #include "foc_function.h"
 
-static uint16_t adc_current[3];
-static uint16_t adc_voltage[3];
-static uint16_t adc_hall[3];
-static uint16_t adc_msic[3];
+/* 
+	0  - volatge1
+	1  - volatge2
+	2  - volatge3
+	3  - current1
+	4  - current2
+	5  - current3
+	6  - chip temp
+	7  - motor temp
+	8  - pcb temp
+	9  - Vref
+	10 - adc in
+	11 - vbus
+ */
+static uint16_t adc_raw[12];
 
 const osThreadAttr_t foc_attributes = {
 		.name = "foc",
@@ -32,12 +43,12 @@ namespace MC_FOC {
 
 bool FOC::_power_state = false;
 
-static void ADC1_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     MC_FOC::gFOC.foc_process();
 }
 
-static void TIM2_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+static void TIM6_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     MC_FOC::gEnc.enc_process();
 }
@@ -70,6 +81,8 @@ FOC::~FOC(void)
 
 bool FOC::init(void)
 {
+	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
 	_params_sub     = ipc_subscibe(IPC_ID(parameter_update));
 	// _encoder_sub    = ipc_subscibe(IPC_ID(encoder));
 	_foc_target_sub = ipc_subscibe(IPC_ID(foc_target));
@@ -101,25 +114,43 @@ bool FOC::init(void)
 	foc_adc_ela  = perf_alloc(PC_ELAPSED, "adc_ela");
 	foc_task_ela = perf_alloc(PC_ELAPSED, "foc_ela");
 
-	HAL_ADC_RegisterCallback(&hadc1, HAL_ADC_CONVERSION_COMPLETE_CB_ID, ADC1_ConvCpltCallback);
-	HAL_TIM_RegisterCallback(&htim2, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM2_PeriodElapsedCallback);
+	HAL_TIM_RegisterCallback(&htim6, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM6_PeriodElapsedCallback);
 
 	// enc
-	HAL_TIM_Base_Start_IT(&htim2);
+	HAL_TIM_Base_Start_IT(&htim6);
+	TIM6->CNT = 0;
+
+	// adc (be trigged)
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_Start(&hadc3);
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t *)adc_raw, 12);
+
+	sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+	sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+	sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+	sBreakDeadTimeConfig.DeadTime = calculate_deadtime(360.0f, 168000000);
+	sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+	sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+	sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+	if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 	// motor
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-	// adc (be trigged)
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_current, 3);
-	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc_voltage, 3);
-	HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc_hall, 3);
-    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)adc_msic, 3);
+	hal_update_samp(2);
+	HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_2);
+
+	TIM1->CNT = 0;
+	TIM2->CNT = 0;
 
 	pwm_output_on();
 
@@ -135,36 +166,36 @@ bool FOC::init(void)
 void FOC::current_calibration(void)
 {
 	volatile float phase_temp[3];
+	uint16_t sample_cnt = 0;
     
     pwm_output_off();
     
     memset(_mc_cfg.offset, 0, sizeof(_mc_cfg.offset));
-    __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOS);
-    __HAL_ADC_CLEAR_FLAG(&hadc4, ADC_FLAG_EOS);
+    __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC);
     
     phase_temp[0] = 0.0f;
     phase_temp[1] = 0.0f;
     phase_temp[2] = 0.0f;
     
-    for(uint16_t bIndex=0; bIndex <600; bIndex++) {
-        while(!__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_EOS) && !__HAL_ADC_GET_FLAG(&hadc4, ADC_FLAG_EOS)) { }
+    while(sample_cnt < 600) {
+        while(!__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_EOC)) { }
 
-		if(adc_msic[2] == 0) {
+		if(adc_raw[9] == 0) {
 			osDelay(1);
 			continue;
 		}
         
-        phase_temp[0] += VREFINT * ((adc_current[0]*(VREF/4096))/(adc_msic[2]*(VREF/4096)));
-        phase_temp[1] += VREFINT * ((adc_current[1]*(VREF/4096))/(adc_msic[2]*(VREF/4096)));
-        phase_temp[2] += VREFINT * ((adc_current[2]*(VREF/4096))/(adc_msic[2]*(VREF/4096)));
+        phase_temp[0] += VREFINT * ((adc_raw[3]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+        phase_temp[1] += VREFINT * ((adc_raw[4]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+        phase_temp[2] += VREFINT * ((adc_raw[5]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+		sample_cnt++;
         
-        __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOS);
-        __HAL_ADC_CLEAR_FLAG(&hadc4, ADC_FLAG_EOS);
+        __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC);
     }
     
-    _mc_cfg.offset[0] = (phase_temp[0]/600.0f);
-    _mc_cfg.offset[1] = (phase_temp[1]/600.0f);
-    _mc_cfg.offset[2] = (phase_temp[2]/600.0f);
+    _mc_cfg.offset[0] = (phase_temp[0]/sample_cnt);
+    _mc_cfg.offset[1] = (phase_temp[1]/sample_cnt);
+    _mc_cfg.offset[2] = (phase_temp[2]/sample_cnt);
     
     pwm_output_on();
 
@@ -173,7 +204,7 @@ void FOC::current_calibration(void)
 	Info_Debug("Current calibration success\n");
 	Info_Debug("Ia-%d.%dV Ib-%d.%dV Ic-%d.%dV Ref-%d\n", (int)_mc_cfg.offset[0], (int)(_mc_cfg.offset[0]*1000)%1000, 
                (int)_mc_cfg.offset[1], (int)(_mc_cfg.offset[1]*1000)%1000,
-               (int)_mc_cfg.offset[2], (int)(_mc_cfg.offset[2]*1000)%1000, adc_msic[2]);
+               (int)_mc_cfg.offset[2], (int)(_mc_cfg.offset[2]*1000)%1000, adc_raw[9]);
 }
 
 void FOC::parameter_update(bool force)
@@ -222,13 +253,12 @@ void FOC::run(void *parammeter)
 
 		parameter_update(false);
 
-		_refint = adc_msic[2];
+		_refint = adc_raw[9];
 
 		_foc_m.timestamp = ts;
 
-		float adc_value = VREFINT * ((adc_msic[0]*(VREF/4096))/(_refint*(VREF/4096)));
+		float adc_value = VREFINT * ((adc_raw[11]*(VREF/4096))/(_refint*(VREF/4096)));
 		_foc_m.vbus = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
-		_foc_m.temperature = 0;
 		_foc_m.ctrl_mode = _foc_ref.ctrl_mode;
 
 		float intd_limited = (2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus;
@@ -244,6 +274,8 @@ void FOC::run(void *parammeter)
 		ipc_push(IPC_ID(foc_status), _foc_status_pub, &_foc_m);
 
 		MC_FOC::gObser.observer_task(&_foc_m);
+
+		process_temperature();
 
 		if(_pre_foc_mode != _foc_ref.ctrl_mode) {
 			_pre_foc_mode = _foc_ref.ctrl_mode;
@@ -284,7 +316,6 @@ void FOC::foc_process(void)
 	const uint64_t ts = micros();
 
 	const float dt = perf_count_isr(foc_adc_int);
-
 	// HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
 
 	bool updated = false;
@@ -293,17 +324,20 @@ void FOC::foc_process(void)
         ipc_pull_isr(IPC_ID(foc_target), _foc_target_sub, &_foc_ref);
     }
 
-	// get current date
-	for (uint16_t i = 0; i < 3; i++)
-	{
-        adc_value = VREFINT * ((adc_current[i]*(VREF/4096))/(_refint*(VREF/4096)));
-		_foc_m.i_phase[i] = (adc_value - _mc_cfg.offset[i]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
-	}
+	perf_begin_isr(foc_adc_ela);
+
 	// get voltage date
-	for (uint16_t i = 0; i < 3; i++)
+	for (uint16_t i = 0; i <= 2; i++)
 	{
-        adc_value = VREFINT * ((adc_voltage[i]*(VREF/4096))/(_refint*(VREF/4096)));
+        adc_value = VREFINT * ((adc_raw[i]*(VREF/4096))/(_refint*(VREF/4096)));
 		_foc_m.v_phase[i] = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	}
+
+	// get current date
+	for (uint16_t i = 0; i <= 2; i++)
+	{
+        adc_value = VREFINT * ((adc_raw[i+3]*(VREF/4096))/(_refint*(VREF/4096)));
+		_foc_m.i_phase[i] = (adc_value - _mc_cfg.offset[i]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
 	}
 	
 	// wait until foc task ready
@@ -332,10 +366,10 @@ void FOC::foc_process(void)
 		MC_FOC::gObser.observer_idle(&_foc_m.phase_observer);
 
 		MC_FOC::gHfi.hfi_idle();
+
+		perf_end_isr(foc_adc_ela);
 		return;
 	}
-
-    perf_begin_isr(foc_adc_ela);
 
 	_id_ctrl.set_dt(dt);
 	_iq_ctrl.set_dt(dt);
@@ -677,6 +711,18 @@ void FOC::svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 	*tBout = tB;
 	*tCout = tC;
 	*svm_sector = sector;
+}
+
+void FOC::process_temperature(void)
+{
+	float pcb_ntc_res   = ((4095.0f * 10000.0f) / (float)adc_raw[8] - 10000.0f);
+	float motor_ntc_res = (10000.0f / ((4095.0f / (float)adc_raw[7]) - 1.0f));
+
+	_foc_m.temp_pcb   = (1.0f / ((logf(pcb_ntc_res / 10000.0f) / 3380.0f) + (1.0f / 298.15f)) - 273.15f);
+	_foc_m.temp_motor = (1.0f / ((logf(motor_ntc_res / 10000.0f) / 3380.0f) + (1.0f / 298.15f)) - 273.15f);
+
+	float chip_adc = VREFINT * ((adc_raw[6]*(VREF/4096))/(_refint*(VREF/4096)));
+	_foc_m.temp_chip = (chip_adc - 0.76f) * 1000/2.5f + 25.0f;
 }
 
 int foc_main(int argc, char *argv[])
