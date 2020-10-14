@@ -25,6 +25,22 @@
 	10 - adc in
 	11 - vbus
  */
+
+#define CURRENT_A_INDEX        0
+#define CURRENT_B_INDEX        1
+#define CURRENT_C_INDEX        2
+
+#define VOLTAGE_A_INDEX        3
+#define VOLTAGE_B_INDEX        4
+#define VOLTAGE_C_INDEX        5
+
+#define TEMP_CHIP_INDEX        6
+#define TEMP_MOTO_INDEX        7
+#define TEMP_PCBA_INDEX        8
+#define TEMP_VREF_INDEX        9
+#define TEMP_ADIN_INDEX        10
+#define TEMP_VBUS_INDEX        11
+
 static uint16_t adc_raw[12];
 
 const osThreadAttr_t foc_attributes = {
@@ -62,7 +78,7 @@ FOC::FOC(void):
 	_id_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_iq_ctrl(0.0f,    0.0f,   0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
 	_duty_ctrl(10.0f, 200.0f, 0.0f, 1.0f, 60.0f, CURRENT_RATE_DT),
-	_td(CURRENT_RATE_DT, 300.0f, CURRENT_RATE_DT*2),
+	_td(CURRENT_RATE_DT, 10.0f, CURRENT_RATE_DT*2),
 	_refint(0),
 	_pre_foc_mode(0),
 	_calibration_ok(false),
@@ -118,13 +134,12 @@ bool FOC::init(void)
 
 	// enc
 	HAL_TIM_Base_Start_IT(&htim6);
-	TIM6->CNT = 0;
 
 	// adc (be trigged)
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t *)adc_raw, 12);
 	HAL_ADC_Start(&hadc2);
 	HAL_ADC_Start(&hadc3);
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t *)adc_raw, 12);
-
+	
 	sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
 	sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
 	sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
@@ -147,10 +162,11 @@ bool FOC::init(void)
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
 	hal_update_samp(2);
-	HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 
-	TIM1->CNT = 0;
-	TIM2->CNT = 0;
+	__HAL_TIM_SET_COUNTER(&htim1, 0);
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	__HAL_TIM_SET_COUNTER(&htim6, 0);
 
 	pwm_output_on();
 
@@ -169,6 +185,7 @@ void FOC::current_calibration(void)
 	uint16_t sample_cnt = 0;
     
     pwm_output_off();
+	_power_state = false;
     
     memset(_mc_cfg.offset, 0, sizeof(_mc_cfg.offset));
     __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC);
@@ -180,14 +197,14 @@ void FOC::current_calibration(void)
     while(sample_cnt < 600) {
         while(!__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_EOC)) { }
 
-		if(adc_raw[9] == 0) {
+		if(adc_raw[TEMP_VREF_INDEX] == 0) {
 			osDelay(1);
 			continue;
 		}
         
-        phase_temp[0] += VREFINT * ((adc_raw[3]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
-        phase_temp[1] += VREFINT * ((adc_raw[4]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
-        phase_temp[2] += VREFINT * ((adc_raw[5]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+        phase_temp[0] += adc_raw[CURRENT_A_INDEX] * (3.3f/4096.f); // VREFINT * ((adc_raw[CURRENT_A_INDEX]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+        phase_temp[1] += adc_raw[CURRENT_B_INDEX] * (3.3f/4096.f); // VREFINT * ((adc_raw[CURRENT_B_INDEX]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
+        phase_temp[2] += adc_raw[CURRENT_C_INDEX] * (3.3f/4096.f); // VREFINT * ((adc_raw[CURRENT_C_INDEX]*(VREF/4096))/(adc_raw[9]*(VREF/4096)));
 		sample_cnt++;
         
         __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC);
@@ -198,13 +215,14 @@ void FOC::current_calibration(void)
     _mc_cfg.offset[2] = (phase_temp[2]/sample_cnt);
     
     pwm_output_on();
+	_power_state = true;
 
 	_calibration_ok = true;
 
 	Info_Debug("Current calibration success\n");
-	Info_Debug("Ia-%d.%dV Ib-%d.%dV Ic-%d.%dV Ref-%d\n", (int)_mc_cfg.offset[0], (int)(_mc_cfg.offset[0]*1000)%1000, 
+	Info_Debug("Ia-%d.%dV Ib-%d.%dV Ic-%d.%dV\n", (int)_mc_cfg.offset[0], (int)(_mc_cfg.offset[0]*1000)%1000, 
                (int)_mc_cfg.offset[1], (int)(_mc_cfg.offset[1]*1000)%1000,
-               (int)_mc_cfg.offset[2], (int)(_mc_cfg.offset[2]*1000)%1000, adc_raw[9]);
+               (int)_mc_cfg.offset[2], (int)(_mc_cfg.offset[2]*1000)%1000);
 }
 
 void FOC::parameter_update(bool force)
@@ -232,6 +250,14 @@ void FOC::parameter_update(bool force)
 		param_get(_param_handles.flux_linkage_handle,     &_mc_cfg.flux_linkage);
 		param_get(_param_handles.l_current_max_handle,    &_mc_cfg.l_current_max);
 
+		// if(!is_zero(_mc_cfg.motor_r) && !is_zero(_mc_cfg.motor_l)) {
+		// 	float bw = 1.0f / (_const_tc * 1e-6f);
+
+		// 	_mc_cfg.curr_d_p = _mc_cfg.motor_l * bw;
+		// 	_mc_cfg.curr_d_i = _mc_cfg.motor_r * bw;
+		// 	_mc_cfg.curr_q_p = _mc_cfg.motor_l * bw;
+		// 	_mc_cfg.curr_q_i = _mc_cfg.motor_r * bw;
+		// }
 		_id_ctrl.kP(_mc_cfg.curr_d_p);
 		_id_ctrl.kI(_mc_cfg.curr_d_i);
 		_iq_ctrl.kP(_mc_cfg.curr_q_p);
@@ -253,12 +279,11 @@ void FOC::run(void *parammeter)
 
 		parameter_update(false);
 
-		_refint = adc_raw[9];
+		_refint = adc_raw[TEMP_VREF_INDEX];
 
 		_foc_m.timestamp = ts;
 
-		float adc_value = VREFINT * ((adc_raw[11]*(VREF/4096))/(_refint*(VREF/4096)));
-		_foc_m.vbus = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+		_foc_m.vbus = adc_raw[TEMP_VBUS_INDEX] * (3.3f/4096.f) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
 		_foc_m.ctrl_mode = _foc_ref.ctrl_mode;
 
 		float intd_limited = (2.0f / 3.0f) * _mc_cfg.duty_max * SQRT3_BY_2 * _foc_m.vbus;
@@ -311,12 +336,9 @@ void FOC::foc_process(void)
 	float integrator;
 	uint32_t top;
 
-    float adc_value;
-
 	const uint64_t ts = micros();
 
 	const float dt = perf_count_isr(foc_adc_int);
-	// HAL_GPIO_TogglePin(GPIO_TEST_1_GPIO_Port, GPIO_TEST_1_Pin);
 
 	bool updated = false;
 	ipc_check_isr(_foc_target_sub, &updated);
@@ -327,18 +349,20 @@ void FOC::foc_process(void)
 	perf_begin_isr(foc_adc_ela);
 
 	// get voltage date
-	for (uint16_t i = 0; i <= 2; i++)
-	{
-        adc_value = VREFINT * ((adc_raw[i]*(VREF/4096))/(_refint*(VREF/4096)));
-		_foc_m.v_phase[i] = adc_value * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
-	}
-
+	// _foc_m.v_phase[0] = (VREFINT * ((adc_raw[VOLTAGE_A_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	// _foc_m.v_phase[1] = (VREFINT * ((adc_raw[VOLTAGE_B_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	// _foc_m.v_phase[2] = (VREFINT * ((adc_raw[VOLTAGE_C_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	_foc_m.v_phase[0] = adc_raw[VOLTAGE_A_INDEX] * (3.3f/4096.f) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	_foc_m.v_phase[1] = adc_raw[VOLTAGE_B_INDEX] * (3.3f/4096.f) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	_foc_m.v_phase[2] = adc_raw[VOLTAGE_C_INDEX] * (3.3f/4096.f) * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);
+	
 	// get current date
-	for (uint16_t i = 0; i <= 2; i++)
-	{
-        adc_value = VREFINT * ((adc_raw[i+3]*(VREF/4096))/(_refint*(VREF/4096)));
-		_foc_m.i_phase[i] = (adc_value - _mc_cfg.offset[i]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
-	}
+	// _foc_m.i_phase[0] = ((VREFINT * ((adc_raw[CURRENT_A_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) - _mc_cfg.offset[0]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+	// _foc_m.i_phase[1] = ((VREFINT * ((adc_raw[CURRENT_B_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) - _mc_cfg.offset[1]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+	// _foc_m.i_phase[2] = ((VREFINT * ((adc_raw[CURRENT_C_INDEX]*(VREF/4096))/(_refint*(VREF/4096)))) - _mc_cfg.offset[2]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+	_foc_m.i_phase[0] = (adc_raw[CURRENT_A_INDEX] * (3.3f/4096.f) - _mc_cfg.offset[0]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+	_foc_m.i_phase[1] = (adc_raw[CURRENT_B_INDEX] * (3.3f/4096.f) - _mc_cfg.offset[1]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
+	_foc_m.i_phase[2] = (adc_raw[CURRENT_C_INDEX] * (3.3f/4096.f) - _mc_cfg.offset[2]) / (ADC_CURRENT_AMP*ADC_CURRENT_OHM);
 	
 	// wait until foc task ready
 	if (!(_foc_ref.ctrl_mode & MC_CTRL_ENABLE)) {
@@ -515,6 +539,7 @@ void FOC::foc_process(void)
 	_foc_m.mod_q = _foc_m.v_q / ((2.0 / 3.0) * _foc_m.vbus);
 
 	_foc_m.duty = SIGN(_foc_m.v_q) * sqrtf(SQ(_foc_m.mod_d) + SQ(_foc_m.mod_q)) / SQRT3_BY_2;
+	_foc_m.ibus = _foc_m.mod_d * _foc_m.i_d + _foc_m.mod_q * _foc_m.i_q;
 
 	// re-park
 	float mod_alpha = c * _foc_m.mod_d - s * _foc_m.mod_q;
@@ -715,13 +740,13 @@ void FOC::svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 
 void FOC::process_temperature(void)
 {
-	float pcb_ntc_res   = ((4095.0f * 10000.0f) / (float)adc_raw[8] - 10000.0f);
-	float motor_ntc_res = (10000.0f / ((4095.0f / (float)adc_raw[7]) - 1.0f));
+	float pcb_ntc_res   = ((4095.0f * 10000.0f) / (float)adc_raw[TEMP_PCBA_INDEX] - 10000.0f);
+	float motor_ntc_res = (10000.0f / ((4095.0f / (float)adc_raw[TEMP_MOTO_INDEX]) - 1.0f));
 
 	_foc_m.temp_pcb   = (1.0f / ((logf(pcb_ntc_res / 10000.0f) / 3380.0f) + (1.0f / 298.15f)) - 273.15f);
 	_foc_m.temp_motor = (1.0f / ((logf(motor_ntc_res / 10000.0f) / 3380.0f) + (1.0f / 298.15f)) - 273.15f);
 
-	float chip_adc = VREFINT * ((adc_raw[6]*(VREF/4096))/(_refint*(VREF/4096)));
+	float chip_adc = VREFINT * ((adc_raw[TEMP_CHIP_INDEX]*(VREF/4096))/(_refint*(VREF/4096)));
 	_foc_m.temp_chip = (chip_adc - 0.76f) * 1000/2.5f + 25.0f;
 }
 

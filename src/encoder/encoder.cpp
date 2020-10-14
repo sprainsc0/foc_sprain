@@ -91,13 +91,13 @@ void Encoder::run(void *parammeter)
 		ipc_push(IPC_ID(encoder), _encoder_pub, &_enc_data);
 
 		parameter_update(false);
-		if(((ts - start_timr) > 250000) && !_enc_reset) {
+		if(((ts - start_timr) > 350000) && !_enc_reset) {
 			hal_amt222_reset();
 			start_timr = ts;
 			_enc_reset = true;
 		}
 
-		if(((ts - start_timr) > 350000) && !_enc_ready) {
+		if(((ts - start_timr) > 350000) && !_enc_ready && _enc_reset) {
 			_enc_ready = true;
 		}
 

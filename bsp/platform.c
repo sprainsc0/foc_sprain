@@ -1,11 +1,16 @@
 #include "platform.h"
 #include "serial.h"
 #include "uavcan.h"
+#include "drv8301.h"
 
 void platform_init(void)
 {
     HAL_TIM_Base_Start(&htim5);
-	TIM5->CNT = 0;
+	__HAL_TIM_SET_COUNTER(&htim5, 0);
+
+	gate_on();
+
+	hal_drv8301_init();
 
 	hal_uart_init();
 
@@ -26,14 +31,78 @@ void hal_update_samp(uint32_t samp)
 	TIM2->CCR2 = (samp / 2);
 }
 
-void pwm_output_on(void)
+void gate_on(void)
 {
 	HAL_GPIO_WritePin(GATE_EN_GPIO_Port, GATE_EN_Pin, GPIO_PIN_SET);
 }
 
-void pwm_output_off(void)
+void gate_off(void)
 {
 	HAL_GPIO_WritePin(GATE_EN_GPIO_Port, GATE_EN_Pin, GPIO_PIN_RESET);
+}
+
+void pwm_output_on(void)
+{
+	TIM_OC_InitTypeDef sConfigOC = {0};
+
+	sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	sConfigOC.Pulse = 0; //__HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1);
+	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	// sConfigOC.Pulse = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_2);
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	// sConfigOC.Pulse = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_3);
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+}
+
+void pwm_output_off(void)
+{
+	TIM_OC_InitTypeDef sConfigOC = {0};
+
+	sConfigOC.OCMode = TIM_OCMODE_FORCED_INACTIVE;
+	sConfigOC.Pulse = 0;
+	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+	HAL_TIM_GenerateEvent(&htim1, TIM_EVENTSOURCE_COM);
 }
 
 uint8_t calculate_deadtime(float deadtime_ns, float core_clock_freq) 

@@ -219,6 +219,51 @@ int motor_main(int argc, char *argv[])
             ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
         }
 
+        if (!strcmp(argv[i], "rund")) {
+            if (argc < 2) {
+                Info_Debug("input argv error\n");
+                return 0;
+            }
+            float param = (float)atof(argv[++i]);
+            struct foc_target_s foc_ref;
+            if(_foc_ref_pub == nullptr) {
+                _foc_ref_pub = ipc_active(IPC_ID(foc_target), &foc_ref);
+            }
+            foc_ref.ctrl_mode = (MC_CTRL_CURRENT | MC_CTRL_ENABLE | MC_CTRL_DUTY);
+            foc_ref.id_target = 0;
+            foc_ref.iq_target = 0;
+            foc_ref.vd_target = 0;
+            foc_ref.vq_target = 0;
+            foc_ref.target_duty = param;
+            ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
+        }
+
+        if (!strcmp(argv[i], "runo")) {
+            if (argc < 2) {
+                Info_Debug("input argv error\n");
+                return 0;
+            }
+            float param1 = (float)atof(argv[++i]);
+            float param2 = (float)atof(argv[++i]);
+            float op_spd = 0.0f;
+            struct foc_target_s foc_ref;
+            if(_foc_ref_pub == nullptr) {
+                _foc_ref_pub = ipc_active(IPC_ID(foc_target), &foc_ref);
+            }
+            foc_ref.ctrl_mode = (MC_CTRL_CURRENT | MC_CTRL_ENABLE | MC_CTRL_OPENLOOP);
+            foc_ref.id_target = 0;
+            foc_ref.iq_target = param2;
+            foc_ref.vd_target = 0;
+            foc_ref.vq_target = 0;
+            foc_ref.target_duty = 0;
+            while(op_spd < param1) {
+                foc_ref.openloop_spd = op_spd;
+                ipc_push(IPC_ID(foc_target), _foc_ref_pub, &foc_ref);
+                op_spd += 0.05f;
+                osDelay(1);
+            }
+        }
+
         if (!strcmp(argv[i], "idle")) {
             struct foc_target_s foc_ref;
             if(_foc_ref_pub == nullptr) {

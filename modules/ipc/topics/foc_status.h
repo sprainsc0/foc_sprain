@@ -45,6 +45,7 @@ struct foc_status_s {
 	float temp_pcb;
 	float temp_motor;
 	float vbus;
+	float ibus;
 	float duty;
 	float i_abs_filter;
 };

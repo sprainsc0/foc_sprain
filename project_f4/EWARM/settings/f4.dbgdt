@@ -1020,7 +1020,7 @@
             <IarPane-34110>
                 <expressions>
                     <item>count</item>
-                    <item></item>
+                    <item />
                 </expressions>
                 <col-names>
                     <item>Expression</item>

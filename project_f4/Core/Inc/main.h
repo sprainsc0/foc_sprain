@@ -98,8 +98,6 @@ void Error_Handler(void);
 #define H2_GPIO_Port GPIOA
 #define H3_Pin GPIO_PIN_10
 #define H3_GPIO_Port GPIOA
-#define LED_GREEND2_Pin GPIO_PIN_2
-#define LED_GREEND2_GPIO_Port GPIOD
 #define GATE_EN_Pin GPIO_PIN_5
 #define GATE_EN_GPIO_Port GPIOB
 #define Fault_Pin GPIO_PIN_7

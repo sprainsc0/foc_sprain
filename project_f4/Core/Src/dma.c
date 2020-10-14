@@ -21,7 +21,7 @@
 #include "dma.h"
 
 /* USER CODE BEGIN 0 */
-
+DMA_HandleTypeDef hdma_adc;
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/

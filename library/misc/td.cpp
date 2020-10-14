@@ -23,7 +23,9 @@ void TD::reset(void)
 
 void TD::run(float value)
 {
-    float fh = fhan(_x1 - value, _x2, _r0, _h0);
+	float err = _x1 - value;
+
+    float fh = fhan(err, _x2, _r0, _h0);
 	
 	_x1 += _h * _x2;
 	_x2 += _h * fh;

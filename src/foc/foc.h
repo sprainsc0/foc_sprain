@@ -17,11 +17,11 @@
 #include "topics/foc_status.h"
 #include "topics/foc_target.h"
 
-#define ADC_CURRENT_OHM		                  0.0005f
+#define ADC_CURRENT_OHM		                  0.01f
 #define ADC_CURRENT_AMP		                  20.0f
 #define VREFINT                               1.2f
 #define VREF                                  3.3f
-            
+
 #define RESISTANCE1                           39.0f 
 #define RESISTANCE2                           2.2f  
 
@@ -97,6 +97,7 @@ private:
     const float    _foc_dt_us           = 0.138f; // us
     const uint32_t _foc_f_sw            = 25000;
     const float    _low_spd_limited     = 1600.0f; // 
+    const float    _const_tc            = 1000.0f; // us
     // 参考电压
     uint16_t _refint;
     float    _openloop_rad;
