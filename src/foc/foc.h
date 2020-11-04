@@ -97,7 +97,7 @@ private:
     const float    _foc_dt_us           = 0.138f; // us
     const uint32_t _foc_f_sw            = 25000;
     const float    _low_spd_limited     = 1600.0f; // 
-    const float    _const_tc            = 1000.0f; // us
+    const float    _const_tc            = 0.001f; // s
     // 参考电压
     uint16_t _refint;
     float    _openloop_rad;

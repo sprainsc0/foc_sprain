@@ -13,10 +13,10 @@ const struct bgc_parameters_t foc_parameters = {
     {"ENC_E_INVERT", PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
     {"ENC_M_INVERT", PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
 
-    {"CURR_D_P", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 17.0f },
-    {"CURR_D_I", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 4.0f },
-    {"CURR_Q_P", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 17.0f },
-    {"CURR_Q_I", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 4.0f },
+    {"CURR_D_P", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.569f },
+    {"CURR_D_I", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 1.3131f },
+    {"CURR_Q_P", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 0.569f },
+    {"CURR_Q_I", PARAM_TYPE_FLOAT, .volatile_param = 0,.val.f = 1.3131f },
 
     {"SENSOR_TYPE",   PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },
     {"DECOUPLING",    PARAM_TYPE_INT32, .volatile_param = 0,.val.i = 0 },

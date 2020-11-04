@@ -31,6 +31,11 @@ void hal_update_samp(uint32_t samp)
 	TIM2->CCR2 = (samp / 2);
 }
 
+uint8_t fault_pin(void)
+{
+	return HAL_GPIO_ReadPin(Fault_GPIO_Port, Fault_Pin) == GPIO_PIN_SET ? 0 : 1;
+}
+
 void gate_on(void)
 {
 	HAL_GPIO_WritePin(GATE_EN_GPIO_Port, GATE_EN_Pin, GPIO_PIN_SET);

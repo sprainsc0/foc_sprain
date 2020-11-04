@@ -35,6 +35,13 @@ enum IND_CALIBRATE_STATUS {
 	IND_CALIBRATE_FAILED
 };
 
+enum FLUX_CALIBRATE_STATUS {
+	FLUX_CALIBRATE_IDEL = 0,
+	FLUX_CALIBRATE_STARTED,
+	FLUX_CALIBRATE_SUCCESS,
+	FLUX_CALIBRATE_FAILED
+};
+
 struct calibrate_status_s {
 	uint64_t timestamp;
 	uint8_t calibrate_type;

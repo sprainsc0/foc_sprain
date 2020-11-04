@@ -74,7 +74,7 @@ bool RES_Cal::do_calibration(float param)
         osDelay(10);
     }
 
-    osDelay(100);
+    osDelay(500);
 
     // sample
     _sample.avg_current_tot = 0.0f;
@@ -88,11 +88,6 @@ bool RES_Cal::do_calibration(float param)
 		// Timeout
 		if (cnt > 10000) {
             _foc_ref.ctrl_mode = MC_CTRL_IDLE;
-            _foc_ref.id_target = 0;
-            _foc_ref.iq_target = 0;
-            _foc_ref.vd_target = 0;
-            _foc_ref.vq_target = 0;
-            _foc_ref.phase_override = 0;
             ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
             send_status(RES_CALIBRATE_FAILED);
             Info_Debug("[motor]Resistance Detected Failed\n");
@@ -114,11 +109,6 @@ bool RES_Cal::do_calibration(float param)
 	const float voltage_avg = _sample.avg_voltage_tot / (float)_sample.sample_num;
 
     _foc_ref.ctrl_mode = MC_CTRL_IDLE;
-    _foc_ref.id_target = 0;
-    _foc_ref.iq_target = 0;
-    _foc_ref.vd_target = 0;
-    _foc_ref.vq_target = 0;
-    _foc_ref.phase_override = 0;
     ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
 
     _res_calibration.motor_res = (voltage_avg / current_avg) * (2.0f / 3.0f);
@@ -127,7 +117,10 @@ bool RES_Cal::do_calibration(float param)
 
     send_status(RES_CALIBRATE_SUCCESS);
 
-    Info_Debug("[motor]Resistance Detected Success\n");
+    char print[50];
+    sprintf(print, "[motor]Resistance Detected Success - %.6f", _res_calibration.motor_res);
+    Info_Debug("%s \n", print);
+
     
     return true;
 }

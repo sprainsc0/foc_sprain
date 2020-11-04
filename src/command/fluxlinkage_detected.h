@@ -16,7 +16,7 @@ public:
     FLUX_Cal(orb_advert_t &cal_status_pub);
     ~FLUX_Cal(void);
     
-    bool do_calibration(void);
+    bool do_calibration(float curr, float duty);
 
     void send_status(uint8_t status);
     
@@ -39,6 +39,7 @@ private:
         param_t motor_ind_handle;
         param_t ind_diff_handle;
         param_t motor_flux_handle;
+        param_t obs_gain_handle;
     } _cal_params_handles;
 
     struct flux_calibration_s {
@@ -46,10 +47,13 @@ private:
 		float   motor_ind;
         float   ind_diff;
         float   motor_flux;
+        float   obs_gain;
 	} _flux_calibration;
     
     void set_flux_parameter(void);
     void get_flux_parameter(void);
+
+    void foc_openloop(float current, float rpm);
 };
 
 #endif

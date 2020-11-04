@@ -78,7 +78,7 @@ void Command::run(void *parameter)
                 } else if (_command.sub_cmd == 3) {
                     enter_cali_mode();
                     flux = new FLUX_Cal(_cal_status_pub);
-                    flux->do_calibration();
+                    flux->do_calibration(_command.param1, _command.param2);
                     delete flux;
                     exit_cali_mode();
                 } else if (_command.sub_cmd == 4) {
@@ -138,8 +138,8 @@ int Commander_main(int argc, char *argv[])
             command.timestamp = micros();
             command.command = CMD_PRE_CALIBRATION;
             command.sub_cmd = 1;
-            command.param1 = param;
-            command.param2 = (float)param2;
+            command.param1  = param;
+            command.param2  = (float)param2;
 
             ipc_push(IPC_ID(foc_command), cmd_pub, &command);
 
@@ -152,6 +152,36 @@ int Commander_main(int argc, char *argv[])
             command.timestamp = micros();
             command.command = CMD_PRE_CALIBRATION;
             command.sub_cmd = 2;
+
+            ipc_push(IPC_ID(foc_command), cmd_pub, &command);
+
+            ipc_inactive(cmd_pub);
+        }
+
+        if (!strcmp(argv[i], "res")) {
+            struct foc_command_s command;
+            orb_advert_t cmd_pub = ipc_active(IPC_ID(foc_command), &command);
+            float param = (float)atof(argv[++i]);
+            command.timestamp = micros();
+            command.command = CMD_PRE_CALIBRATION;
+            command.sub_cmd = 5;
+            command.param1  = param;
+
+            ipc_push(IPC_ID(foc_command), cmd_pub, &command);
+
+            ipc_inactive(cmd_pub);
+        }
+
+        if (!strcmp(argv[i], "flux")) {
+            struct foc_command_s command;
+            orb_advert_t cmd_pub = ipc_active(IPC_ID(foc_command), &command);
+            float param1 = (float)atof(argv[++i]);
+            float param2 = (float)atof(argv[++i]);
+            command.timestamp = micros();
+            command.command = CMD_PRE_CALIBRATION;
+            command.sub_cmd = 3;
+            command.param1  = param1;
+            command.param2  = param2;
 
             ipc_push(IPC_ID(foc_command), cmd_pub, &command);
 

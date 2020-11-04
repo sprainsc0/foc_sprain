@@ -251,13 +251,20 @@ void FOC::parameter_update(bool force)
 		param_get(_param_handles.l_current_max_handle,    &_mc_cfg.l_current_max);
 
 		// if(!is_zero(_mc_cfg.motor_r) && !is_zero(_mc_cfg.motor_l)) {
-		// 	float bw = 1.0f / (_const_tc * 1e-6f);
+		// 	float bw = 1.0f / (_const_tc * 1e-6f); // 1000
 
 		// 	_mc_cfg.curr_d_p = _mc_cfg.motor_l * bw;
 		// 	_mc_cfg.curr_d_i = _mc_cfg.motor_r * bw;
 		// 	_mc_cfg.curr_q_p = _mc_cfg.motor_l * bw;
 		// 	_mc_cfg.curr_q_i = _mc_cfg.motor_r * bw;
 		// }
+
+		// float max_current = VREF / ADC_CURRENT_AMP / ADC_CURRENT_OHM;          // 16.5
+		// float max_voltage = VREF * ((RESISTANCE1+RESISTANCE2) / RESISTANCE2);  // 61
+		// float revo = _mc_cfg.motor_r / _mc_cfg.motor_l;                        // 
+		// float kp = (0.25f * _mc_cfg.motor_l * max_current) / (_const_tc * max_voltage);
+		// float ki = revo * _const_tc;
+
 		_id_ctrl.kP(_mc_cfg.curr_d_p);
 		_id_ctrl.kI(_mc_cfg.curr_d_i);
 		_iq_ctrl.kP(_mc_cfg.curr_q_p);
@@ -485,7 +492,10 @@ void FOC::foc_process(void)
 		error = _foc_ref.id_target - _foc_m.i_d;
 		_id_ctrl.set_input_filter_d(error);
 		integrator = _id_ctrl.get_integrator();
-		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if ((is_positive(integrator) && is_negative(error)) || 
+			(is_negative(integrator) && is_positive(error)) || 
+			(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) || 
+			(_foc_ref.ctrl_mode & MC_CTRL_OPENLOOP)) {
 			integrator = _id_ctrl.get_i();
 		}
 		_foc_m.v_d = _id_ctrl.get_p() + integrator + _id_ctrl.get_ff(_foc_ref.id_target);
@@ -493,7 +503,10 @@ void FOC::foc_process(void)
 		error = _foc_ref.iq_target - _foc_m.i_q;
 		_iq_ctrl.set_input_filter_d(error);
 		integrator = _iq_ctrl.get_integrator();
-		if ((is_positive(integrator) && is_negative(error)) || (is_negative(integrator) && is_positive(error))) {
+		if ((is_positive(integrator) && is_negative(error)) || 
+			(is_negative(integrator) && is_positive(error)) || 
+			(_foc_ref.ctrl_mode & MC_CTRL_OVERRIDE) || 
+			(_foc_ref.ctrl_mode & MC_CTRL_OPENLOOP)) {
 			integrator = _iq_ctrl.get_i();
 		}
 		_foc_m.v_q = _iq_ctrl.get_p() + integrator + _iq_ctrl.get_ff(_foc_ref.iq_target);

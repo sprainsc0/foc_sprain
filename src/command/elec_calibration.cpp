@@ -95,11 +95,6 @@ bool Enc_CalE::do_calibration(float param, uint8_t use_current)
         send_status(ENC_CALIBRATE_FAILED);
         Info_Debug("[encoder]Encoder Electronic Calibration Failed(Motion1)\n");
         _foc_ref.ctrl_mode = MC_CTRL_IDLE;
-        _foc_ref.id_target = 0;
-        _foc_ref.iq_target = 0;
-        _foc_ref.vd_target = 0;
-        _foc_ref.vq_target = 0;
-        _foc_ref.phase_override = 0;
         ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
         return false;
     }
@@ -114,11 +109,6 @@ bool Enc_CalE::do_calibration(float param, uint8_t use_current)
         send_status(ENC_CALIBRATE_FAILED);
         Info_Debug("[encoder]Encoder Electronic Calibration Failed(Motion2)\n");
         _foc_ref.ctrl_mode = MC_CTRL_IDLE;
-        _foc_ref.id_target = 0;
-        _foc_ref.iq_target = 0;
-        _foc_ref.vd_target = 0;
-        _foc_ref.vq_target = 0;
-        _foc_ref.phase_override = 0;
         ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
         return false;
     }
@@ -136,11 +126,6 @@ bool Enc_CalE::do_calibration(float param, uint8_t use_current)
     send_status(ENC_CALIBRATE_SUCCESS);
 
     _foc_ref.ctrl_mode = MC_CTRL_IDLE;
-    _foc_ref.id_target = 0;
-    _foc_ref.iq_target = 0;
-    _foc_ref.vd_target = 0;
-    _foc_ref.vq_target = 0;
-    _foc_ref.phase_override = 0;
     ipc_push(IPC_ID(foc_target), _foc_ref_pub, &_foc_ref);
 
     Info_Debug("[encoder]Encoder Electronic Calibration Success\n");

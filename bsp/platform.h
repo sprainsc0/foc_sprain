@@ -22,6 +22,8 @@ void pwm_output_off(void);
 void gate_on(void);
 void gate_off(void);
 
+uint8_t fault_pin(void);
+
 uint8_t calculate_deadtime(float deadtime_ns, float core_clock_freq);
 
 #ifdef __cplusplus
